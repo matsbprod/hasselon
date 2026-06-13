@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import * as THREE from "three";
+const { useState, useRef, useEffect, useCallback, useMemo } = React;
+// THREE loaded via CDN
 
 /* ═══ GEDCOM PARSER ═══════════════════════════════════════════ */
 function cleanText(s){if(!s)return"";return s.replace(/\r/g,"").replace(/\xe8O/g,"Ö").replace(/\xe8o/g,"ö").replace(/\xe8A/g,"Ä").replace(/\xe8a/g,"ä").replace(/\xea/g,"å").replace(/\xeaA/g,"Å").replace(/\xe8U/g,"Ü").replace(/\xe8u/g,"ü").trim();}
