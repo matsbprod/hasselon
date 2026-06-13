@@ -1,5 +1,5 @@
 const { useState, useRef, useEffect, useCallback, useMemo } = React;
-// THREE loaded via CDN
+// THREE from CDN
 
 /* ═══ GEDCOM PARSER ═══════════════════════════════════════════ */
 function cleanText(s){if(!s)return"";return s.replace(/\r/g,"").replace(/\xe8O/g,"Ö").replace(/\xe8o/g,"ö").replace(/\xe8A/g,"Ä").replace(/\xe8a/g,"ä").replace(/\xea/g,"å").replace(/\xeaA/g,"Å").replace(/\xe8U/g,"Ü").replace(/\xe8u/g,"ü").trim();}
@@ -639,6 +639,7 @@ function MapView(props) {
   // Tile sources
   var TILE_SOURCES={
     osm:{name:"Standard",url:function(z,x,y){var s=["a","b","c"][(x+y)%3];return"https://"+s+".tile.openstreetmap.org/"+z+"/"+x+"/"+y+".png";},attr:"\u00A9 OpenStreetMap"},
+    lm:{name:"Topo Sverige",url:function(z,x,y){return"https://maps.lantmateriet.se/open/topowebb-ccby/v1/wmts/1.0.0/topowebb/default/3857/"+z+"/"+y+"/"+x+".png";},attr:"\u00A9 Lantm\u00e4teriet CC0"},
     topo:{name:"Topo",url:function(z,x,y){var s=["a","b","c"][(x+y)%3];return"https://"+s+".tile.opentopomap.org/"+z+"/"+x+"/"+y+".png";},attr:"\u00A9 OpenTopoMap"},
     cycle:{name:"Terrain",url:function(z,x,y){return"https://tile.thunderforest.com/landscape/"+z+"/"+x+"/"+y+".png?apikey=6170aad10dfd42a38d4d8c709a536f38";},attr:"\u00A9 Thunderforest"},
     ekon:{name:"Ekonomiska 1935-78",noCors:true,url:function(z,x,y){
@@ -1156,6 +1157,3 @@ function GenealogyApp(){
 }
 
 function AvPrev(props){var ref=useRef(null);useEffect(function(){if(!ref.current)return;var m=PM[props.pid];if(!m)return;var cv=genAvatar(m);var ctx=ref.current.getContext("2d");ref.current.width=36;ref.current.height=36;ctx.drawImage(cv,0,0,128,128,0,0,36,36);},[props.pid]);return <canvas ref={ref} width={36} height={36} style={{width:36,height:36,borderRadius:8,border:"2px solid "+(props.sex==="M"?"#4a9eff":"#ff6b9d"),background:"#080c14"}}/>;}
-
-
-const _root=ReactDOM.createRoot(document.getElementById('root'));_root.render(React.createElement(GenealogyApp));
