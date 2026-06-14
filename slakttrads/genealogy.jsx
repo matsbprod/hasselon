@@ -1,5 +1,5 @@
 const { useState, useRef, useEffect, useCallback, useMemo } = React;
-// THREE loaded via CDN
+// THREE from CDN
 
 /* ═══ GEDCOM PARSER ═══════════════════════════════════════════ */
 function cleanText(s){if(!s)return"";return s.replace(/\r/g,"").replace(/\xe8O/g,"Ö").replace(/\xe8o/g,"ö").replace(/\xe8A/g,"Ä").replace(/\xe8a/g,"ä").replace(/\xea/g,"å").replace(/\xeaA/g,"Å").replace(/\xe8U/g,"Ü").replace(/\xe8u/g,"ü").trim();}
@@ -151,16 +151,63 @@ var GEOCODE={
   // === Norway / International ===
   "grimstad":{lat:58.3405,lon:8.5930},"norge":{lat:59.0,lon:10.0},"usa":{lat:40.7128,lon:-74.0060},"minnesota":{lat:44.9778,lon:-93.2650},"amerika":{lat:40.7128,lon:-74.0060},
 };
+
+
+// Build timeline of locations for a person
+// Combines: 1) extraLocs (locations.json), 2) GEDCOM RESI events, 3) birth/death geocoding
+function buildPersonLocations(ind, extraLocs){
+  if(!ind)return [];
+  var locs=[];
+  var id=ind.id||ind.rawId;
+  
+  // 1. Explicit locations from locations.json (highest priority)
+  if(extraLocs&&extraLocs[id]){
+    return extraLocs[id]; // already formatted [{lat,lon,from,to,place,type}]
+  }
+  
+  // 2. Parse year from date string
+  function yr(d){if(!d)return null;var m=d.match(/\d{4}/);return m?parseInt(m[0]):null;}
+  
+  var birthY=yr(ind.birthDate), deathY=yr(ind.deathDate);
+  
+  // 3. Birth place
+  if(ind.birthPlace){
+    var bloc=lookupLocation(ind.birthPlace);
+    if(bloc)locs.push({lat:bloc.lat,lon:bloc.lon,from:birthY,to:birthY,place:ind.birthPlace,type:"birth"});
+  }
+  
+  // 4. RESI events from GEDCOM
+  if(ind.events){
+    ind.events.forEach(function(ev){
+      var eloc=lookupLocation(ev.place);
+      if(eloc){
+        var ey=yr(ev.date);
+        locs.push({lat:eloc.lat,lon:eloc.lon,from:ey,to:ey,place:ev.place,type:ev.type.toLowerCase(),date:ev.date});
+      }
+    });
+  }
+  
+  // 5. Death place (if different from birth)
+  if(ind.deathPlace&&ind.deathPlace!==ind.birthPlace){
+    var dloc=lookupLocation(ind.deathPlace);
+    if(dloc)locs.push({lat:dloc.lat,lon:dloc.lon,from:deathY,to:deathY,place:ind.deathPlace,type:"death"});
+  }
+  
+  // Sort by year
+  locs.sort(function(a,b){return (a.from||0)-(b.from||0);});
+  return locs;
+}
+
+function kartbildUrl(lat,lon,layer){
+  if(!lat||!lon)return null;
+  return 'https://kartbild.com/#15/'+lat.toFixed(4)+'/'+lon.toFixed(4)+'/'+layer;
+}
 function lookupLocation(place){
   if(!place)return null;
   var p=place.toLowerCase();
-  var keys=Object.keys(GEOCODE);
-  for(var ki=0;ki<keys.length;ki++){
-    if(p.indexOf(keys[ki])>=0)return GEOCODE[keys[ki]];
-  }
+  for(var ki=0;ki<GEOCODE_KEYS.length;ki++){if(p.indexOf(GEOCODE_KEYS[ki])>=0)return GEOCODE[GEOCODE_KEYS[ki]];}
   return null;
 }
-
 
 // Pre-sort keys longest first so "kristinehamn" matches before "kristine"
 var GEOCODE_KEYS=Object.keys(GEOCODE).sort(function(a,b){return b.length-a.length;});
@@ -182,7 +229,7 @@ function parseYear(d){if(!d)return null;var m=d.match(/(\d{4})/);return m?parseI
 /* ═══ SAMPLE DATA ═════════════════════════════════════════════ */
 var PM={"@I1@":{i:"JS",s:"M",h:"#8B7355",k:"#D08B5B",t:"#3c4f5c"},"@I2@":{i:"MJ",s:"F",h:"#4A312C",k:"#EDB98A",t:"#929598"},"@I3@":{i:"RS",s:"M",h:"#5C4033",k:"#D08B5B",t:"#25557c"},"@I4@":{i:"ES",s:"F",h:"#6B3A2E",k:"#EDB98A",t:"#c44a7a"},"@I5@":{i:"SW",s:"F",h:"#A0522D",k:"#FFDBB4",t:"#7a6a9e"},"@I6@":{i:"JS",s:"M",h:"#3B2F2F",k:"#D08B5B",t:"#3c4f5c"},"@I7@":{i:"ES",s:"F",h:"#B58143",k:"#EDB98A",t:"#6a8a6a"},"@I8@":{i:"TB",s:"M",h:"#4E3B31",k:"#FFDBB4",t:"#25557c"},"@I9@":{i:"CB",s:"F",h:"#7B3F00",k:"#FFDBB4",t:"#c44a7a"},"@I10@":{i:"WB",s:"M",h:"#2F1E0E",k:"#FFDBB4",t:"#3c4f5c"},"@I11@":{i:"AD",s:"F",h:"#8B4513",k:"#EDB98A",t:"#7a6a9e"},"@I12@":{i:"OS",s:"M",h:"#3B2F2F",k:"#D08B5B",t:"#25557c"},"@I13@":{i:"CS",s:"F",h:"#B58143",k:"#EDB98A",t:"#c44a7a"}};
 function genAvatar(m){var s=128,c=document.createElement("canvas");c.width=s;c.height=s;var x=c.getContext("2d"),cx=s/2;x.beginPath();x.arc(cx,cx,60,0,Math.PI*2);x.fillStyle=m.s==="M"?"#1a3a5c":"#4a1a3a";x.fill();x.fillStyle=m.k;x.fillRect(cx-8,78,16,16);x.fillStyle=m.t;x.beginPath();x.ellipse(cx,115,38,24,0,Math.PI,0,true);x.fill();x.fillStyle=m.k;x.beginPath();x.ellipse(cx,52,22,26,0,0,Math.PI*2);x.fill();x.fillStyle=m.h;if(m.s==="M"){x.beginPath();x.ellipse(cx,42,23,18,0,Math.PI,0,true);x.fill();x.fillRect(cx-22,38,5,14);x.fillRect(cx+17,38,5,14);}else{x.beginPath();x.ellipse(cx,42,25,20,0,Math.PI,0,true);x.fill();x.beginPath();x.moveTo(cx-25,42);x.quadraticCurveTo(cx-30,65,cx-26,85);x.lineTo(cx-20,85);x.quadraticCurveTo(cx-22,65,cx-22,45);x.fill();x.beginPath();x.moveTo(cx+25,42);x.quadraticCurveTo(cx+30,65,cx+26,85);x.lineTo(cx+20,85);x.quadraticCurveTo(cx+22,65,cx+22,45);x.fill();}x.fillStyle="#fff";x.beginPath();x.ellipse(cx-8,50,4.5,3.5,0,0,Math.PI*2);x.fill();x.beginPath();x.ellipse(cx+8,50,4.5,3.5,0,0,Math.PI*2);x.fill();x.fillStyle="#2c1810";x.beginPath();x.arc(cx-7,50,2.2,0,Math.PI*2);x.fill();x.beginPath();x.arc(cx+9,50,2.2,0,Math.PI*2);x.fill();x.strokeStyle="#c06050";x.lineWidth=1.8;x.beginPath();x.arc(cx,64,6,0.15*Math.PI,0.85*Math.PI);x.stroke();x.beginPath();x.arc(cx,cx,60,0,Math.PI*2);x.strokeStyle=m.s==="M"?"#4a9eff":"#ff6b9d";x.lineWidth=3;x.stroke();return c;}
-function genPhotoTex(pid){var m=PM[pid];if(!m)return null;return new THREE.CanvasTexture(genAvatar(m));}
+function genPhotoTex(pid){var m=PM[pid];if(!m||typeof THREE==='undefined')return null;return new THREE.CanvasTexture(genAvatar(m));}
 var GEDCOM=["0 HEAD","1 SOUR SAMPLE","0 @I1@ INDI","1 NAME John /Smith/","2 GIVN John","2 SURN Smith","1 SEX M","1 BIRT","2 DATE 15 JAN 1920","2 PLAC Göteborg","1 DEAT","2 DATE 3 MAR 1995","2 PLAC Uddevalla","1 FAMS @F1@","0 @I2@ INDI","1 NAME Mary /Johnson/","2 GIVN Mary","2 SURN Johnson","1 SEX F","1 BIRT","2 DATE 22 JUN 1925","2 PLAC Lysekil","1 DEAT","2 DATE 10 NOV 2001","2 PLAC Uddevalla","1 FAMS @F1@","0 @I3@ INDI","1 NAME Robert /Smith/","2 GIVN Robert","2 SURN Smith","1 SEX M","1 BIRT","2 DATE 5 MAR 1948","2 PLAC Uddevalla","1 FAMC @F1@","1 FAMS @F2@","0 @I4@ INDI","1 NAME Elizabeth /Smith/","2 GIVN Elizabeth","2 SURN Smith","1 SEX F","1 BIRT","2 DATE 12 SEP 1950","2 PLAC Uddevalla","1 FAMC @F1@","1 FAMS @F3@","0 @I5@ INDI","1 NAME Susan /Williams/","2 GIVN Susan","2 SURN Williams","1 SEX F","1 BIRT","2 DATE 8 AUG 1952","2 PLAC Myckleby","1 FAMS @F2@","0 @I6@ INDI","1 NAME James /Smith/","2 GIVN James","2 SURN Smith","1 SEX M","1 BIRT","2 DATE 20 DEC 1975","2 PLAC Göteborg","1 FAMC @F2@","1 FAMS @F4@","0 @I7@ INDI","1 NAME Emma /Smith/","2 GIVN Emma","2 SURN Smith","1 SEX F","1 BIRT","2 DATE 3 FEB 1978","2 PLAC Göteborg","1 FAMC @F2@","0 @I8@ INDI","1 NAME Thomas /Brown/","2 GIVN Thomas","2 SURN Brown","1 SEX M","1 BIRT","2 DATE 14 JUL 1948","2 PLAC Torp","1 FAMS @F3@","0 @I9@ INDI","1 NAME Catherine /Brown/","2 GIVN Catherine","2 SURN Brown","1 SEX F","1 BIRT","2 DATE 1 APR 1972","2 PLAC Torp","1 FAMC @F3@","0 @I10@ INDI","1 NAME William /Brown/","2 GIVN William","2 SURN Brown","1 SEX M","1 BIRT","2 DATE 17 OCT 1974","2 PLAC Torp","1 FAMC @F3@","0 @I11@ INDI","1 NAME Alice /Davis/","2 GIVN Alice","2 SURN Davis","1 SEX F","1 BIRT","2 DATE 5 MAY 1977","2 PLAC Forshälla","1 FAMS @F4@","0 @I12@ INDI","1 NAME Oliver /Smith/","2 GIVN Oliver","2 SURN Smith","1 SEX M","1 BIRT","2 DATE 12 SEP 2003","2 PLAC Göteborg","1 FAMC @F4@","0 @I13@ INDI","1 NAME Charlotte /Smith/","2 GIVN Charlotte","2 SURN Smith","1 SEX F","1 BIRT","2 DATE 28 NOV 2006","2 PLAC Göteborg","1 FAMC @F4@","0 @F1@ FAM","1 HUSB @I1@","1 WIFE @I2@","1 CHIL @I3@","1 CHIL @I4@","0 @F2@ FAM","1 HUSB @I3@","1 WIFE @I5@","1 CHIL @I6@","1 CHIL @I7@","0 @F3@ FAM","1 HUSB @I8@","1 WIFE @I4@","1 CHIL @I9@","1 CHIL @I10@","0 @F4@ FAM","1 HUSB @I6@","1 WIFE @I11@","1 CHIL @I12@","1 CHIL @I13@","0 TRLR"].join("\n");
 
 /* ═══ COLORS ══════════════════════════════════════════════════ */
@@ -207,8 +254,8 @@ function mkSilhouette(sex){
   x.fillStyle="#1a1a1a";
   x.beginPath();x.arc(128,120,58,0,Math.PI*2);x.fill();
   x.beginPath();x.moveTo(40,290);x.quadraticCurveTo(45,195,128,192);x.quadraticCurveTo(211,195,216,290);x.closePath();x.fill();
-  var tex=new THREE.CanvasTexture(cv);
-  _silhCache[key]=tex;return tex;
+  _silhCache[key]=cv;
+  return cv;
 }
 function mkLabel(n,dt,hl){
   var cv=document.createElement("canvas");cv.width=400;cv.height=120;
@@ -222,7 +269,7 @@ function mkLabel(n,dt,hl){
   var y=4;
   for(var li=0;li<lines2.length;li++){x.fillText(lines2[li],200,y);y+=22;}
   if(dt){x.font="13px Arial";x.fillStyle=hl?"#ffe88a":"#8899aa";x.shadowBlur=4;x.fillText(dt,200,y+2);}
-  return new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),transparent:true,depthTest:false});
+  if(typeof THREE==="undefined")return cv;return new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),transparent:true,depthTest:false});
 }
 
 /* ═══ MAP with zoom/pan — realistic colors ════════════════════ */
@@ -876,57 +923,6 @@ function MapView(props) {
 }
 
 /* ═══ MAIN APP ════════════════════════════════════════════════ */
-// Build timeline of locations for a person
-// Combines: 1) extraLocs (locations.json), 2) GEDCOM RESI events, 3) birth/death geocoding
-function buildPersonLocations(ind, extraLocs){
-  if(!ind)return [];
-  var locs=[];
-  var id=ind.id||ind.rawId;
-  
-  // 1. Explicit locations from locations.json (highest priority)
-  if(extraLocs&&extraLocs[id]){
-    return extraLocs[id]; // already formatted [{lat,lon,from,to,place,type}]
-  }
-  
-  // 2. Parse year from date string
-  function yr(d){if(!d)return null;var m=d.match(/\d{4}/);return m?parseInt(m[0]):null;}
-  
-  var birthY=yr(ind.birthDate), deathY=yr(ind.deathDate);
-  
-  // 3. Birth place
-  if(ind.birthPlace){
-    var bloc=lookupLocation(ind.birthPlace);
-    if(bloc)locs.push({lat:bloc.lat,lon:bloc.lon,from:birthY,to:birthY,place:ind.birthPlace,type:"birth"});
-  }
-  
-  // 4. RESI events from GEDCOM
-  if(ind.events){
-    ind.events.forEach(function(ev){
-      var eloc=lookupLocation(ev.place);
-      if(eloc){
-        var ey=yr(ev.date);
-        locs.push({lat:eloc.lat,lon:eloc.lon,from:ey,to:ey,place:ev.place,type:ev.type.toLowerCase(),date:ev.date});
-      }
-    });
-  }
-  
-  // 5. Death place (if different from birth)
-  if(ind.deathPlace&&ind.deathPlace!==ind.birthPlace){
-    var dloc=lookupLocation(ind.deathPlace);
-    if(dloc)locs.push({lat:dloc.lat,lon:dloc.lon,from:deathY,to:deathY,place:ind.deathPlace,type:"death"});
-  }
-  
-  // Sort by year
-  locs.sort(function(a,b){return (a.from||0)-(b.from||0);});
-  return locs;
-}
-
-function kartbildUrl(lat,lon,layer){
-  // layer codes: eko1=0x10000, eko2=0x20000, harad=0x4000, flyg1960=0x100, flyg1975=0x200, topo=0x1000
-  if(!lat||!lon)return null;
-  return 'https://kartbild.com/#15/'+lat.toFixed(4)+'/'+lon.toFixed(4)+'/'+layer;
-}
-
 // ═══ PLACES EDITOR ═══════════════════════════════════════
 function PlacesEditor({individuals,families,extraLocs,setExtraLocs,selectedId,buildPersonLocations,lookupLocation,hasParsedData}){
   const {useState,useRef,useEffect,useCallback}=React;
@@ -1421,12 +1417,12 @@ function GenealogyApp(){
           </div>
           <div style={{padding:"6px 12px 10px",fontSize:11,display:"grid",gap:3}}>
             {panelPerson.birthDate&&<div><span style={{color:C.dim}}>Born </span>{panelPerson.birthDate}{panelPerson.birthPlace?" · "+panelPerson.birthPlace:""}</div>}
-              {panelPerson.birthPlace&&lookupLocation(panelPerson.birthPlace)&&<div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:4}}>
-                  <a href={kartbildUrl((lookupLocation(panelPerson.birthPlace)||{}).lat,(lookupLocation(panelPerson.birthPlace)||{}).lon,0x10000)} target="_blank" style={{fontSize:9,padding:"2px 6px",background:"rgba(255,200,50,0.15)",border:"1px solid rgba(255,200,50,0.4)",borderRadius:3,color:"#ffd060",textDecoration:"none"}}>📜 Ekon.karta</a>
-                                    <a href={kartbildUrl((lookupLocation(panelPerson.birthPlace)||{}).lat,(lookupLocation(panelPerson.birthPlace)||{}).lon,0x100)} target="_blank" style={{fontSize:9,padding:"2px 6px",background:"rgba(100,180,255,0.15)",border:"1px solid rgba(100,180,255,0.4)",borderRadius:3,color:"#64b4ff",textDecoration:"none"}}>✈ Flygfoto 1960</a>
-                  <a href={kartbildUrl((lookupLocation(panelPerson.birthPlace)||{}).lat,(lookupLocation(panelPerson.birthPlace)||{}).lon,0x200)} target="_blank" style={{fontSize:9,padding:"2px 6px",background:"rgba(100,180,255,0.15)",border:"1px solid rgba(100,180,255,0.4)",borderRadius:3,color:"#64b4ff",textDecoration:"none"}}>✈ Flygfoto 1975</a>
-                </div>}
-                {panelPerson.deathDate&&<div><span style={{color:C.dim}}>Died </span>{panelPerson.deathDate}{panelPerson.deathPlace?" · "+panelPerson.deathPlace:""}</div>}
+              {panelPerson.birthPlace&&lookupLocation(panelPerson.birthPlace)&&(<div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:4}}>
+                <a href={kartbildUrl((lookupLocation(panelPerson.birthPlace)||{}).lat,(lookupLocation(panelPerson.birthPlace)||{}).lon,0x10000)} target="_blank" style={{fontSize:9,padding:"2px 6px",background:"rgba(255,200,50,0.15)",border:"1px solid rgba(255,200,50,0.4)",borderRadius:3,color:"#ffd060",textDecoration:"none"}}>📜 Ekon.karta</a>
+                                <a href={kartbildUrl((lookupLocation(panelPerson.birthPlace)||{}).lat,(lookupLocation(panelPerson.birthPlace)||{}).lon,0x100)} target="_blank" style={{fontSize:9,padding:"2px 6px",background:"rgba(100,180,255,0.15)",border:"1px solid rgba(100,180,255,0.4)",borderRadius:3,color:"#64b4ff",textDecoration:"none"}}>✈ Flygfoto 1960</a>
+                <a href={kartbildUrl((lookupLocation(panelPerson.birthPlace)||{}).lat,(lookupLocation(panelPerson.birthPlace)||{}).lon,0x200)} target="_blank" style={{fontSize:9,padding:"2px 6px",background:"rgba(100,180,255,0.15)",border:"1px solid rgba(100,180,255,0.4)",borderRadius:3,color:"#64b4ff",textDecoration:"none"}}>✈ Flygfoto 1975</a>
+              </div>)}
+              {panelPerson.deathDate&&<div><span style={{color:C.dim}}>Died </span>{panelPerson.deathDate}{panelPerson.deathPlace?" · "+panelPerson.deathPlace:""}</div>}
           </div>
           {photoUrls[panelPerson.id]&&photoUrls[panelPerson.id].length>0&&(
             <div style={{padding:"4px 12px 10px"}}>
@@ -1450,7 +1446,7 @@ function GenealogyApp(){
           {rightView==="map"&&<MapView individuals={parsedData.individuals} year={sliderYear} rangeStart={effStart} rangeEnd={effEnd} selectedId={sel?sel.id:null} onSelect={mapSel} isSample={isSample} extraLocs={extraLocs} buildPersonLocations={buildPersonLocations}/>}
           {rightView==="pedigree"&&<PedigreeView individuals={parsedData.individuals} families={parsedData.families} selectedId={sel?sel.id:null} mode={pedigreeMode} onInspect={function(id){var p=parsedData.individuals[id];if(p){p.id=id;setInspPerson(p);}}} onSelect={function(id){var nd=layout.nodes.find(function(n){return n.id===id;});setSel(nd||null);}} photoUrls={photoUrls}/>}
           {rightView==="fan"&&<FanView individuals={parsedData.individuals} families={parsedData.families} selectedId={sel?sel.id:null} mode={pedigreeMode} onInspect={function(id){var p=parsedData.individuals[id];if(p){p.id=id;setInspPerson(p);}}} onSelect={function(id){var nd=layout.nodes.find(function(n){return n.id===id;});setSel(nd||null);}} photoUrls={photoUrls}/>}
-              {rightView==="kb"&&(<div style={{width:"100%",height:"100%",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16,background:C.bg,color:C.dim}}>
+          {rightView==="kb"&&(<div style={{width:"100%",height:"100%",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16,background:C.bg,color:C.dim}}>
               <div style={{fontSize:40}}>☉</div>
               <div style={{fontSize:14,fontWeight:600,color:C.text}}>Kartbild.com historiska kartor</div>
               <div style={{fontSize:12,textAlign:"center",maxWidth:300,lineHeight:1.6}}>Välj en person i 3D-vyn eller klicka på en plats på kartan för att öppna historisk karta</div>
@@ -1462,7 +1458,16 @@ function GenealogyApp(){
               </div>)}
               {sel&&(!sel.birthPlace||!lookupLocation(sel.birthPlace))&&<div style={{fontSize:11,color:C.dim,marginTop:8}}>Vald person: {sel.name} — födelseort ej i geocoding-registret</div>}
             </div>)}
-              }
+          {rightView==="places"&&<PlacesEditor
+            individuals={parsedData?parsedData.individuals:{}}
+            families={parsedData?parsedData.families:{}}
+            extraLocs={extraLocs}
+            setExtraLocs={setExtraLocs}
+            selectedId={sel?sel.id:null}
+            buildPersonLocations={buildPersonLocations}
+            lookupLocation={lookupLocation}
+            hasParsedData={!!parsedData}
+          />}
         </div>
         <div style={{flexShrink:0,padding:"8px 14px 10px",background:C.panel,borderTop:"1px solid "+C.border}}>
           <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
@@ -1486,12 +1491,11 @@ function GenealogyApp(){
 
 function AvPrev(props){var ref=useRef(null);useEffect(function(){if(!ref.current)return;var m=PM[props.pid];if(!m)return;var cv=genAvatar(m);var ctx=ref.current.getContext("2d");ref.current.width=36;ref.current.height=36;ctx.drawImage(cv,0,0,128,128,0,0,36,36);},[props.pid]);return <canvas ref={ref} width={36} height={36} style={{width:36,height:36,borderRadius:8,border:"2px solid "+(props.sex==="M"?"#4a9eff":"#ff6b9d"),background:"#080c14"}}/>;}
 
-
 class ErrorBoundary extends React.Component {
   constructor(props){super(props);this.state={err:null};}
   componentDidCatch(e){this.setState({err:e});}
   static getDerivedStateFromError(e){return {err:e};}
-  render(){if(this.state.err)return React.createElement('div',{style:{color:'red',background:'#111',padding:20,fontSize:12,whiteSpace:'pre-wrap'}},'RENDER ERROR: '+this.state.err.message+'\n'+String(this.state.err.stack).substring(0,600));return this.props.children;}
+  render(){if(this.state.err)return React.createElement('div',{style:{color:'red',padding:20}},'ERROR: '+this.state.err.message);return this.props.children;}
 }
 const _root=ReactDOM.createRoot(document.getElementById('root'));
 _root.render(React.createElement(ErrorBoundary,null,React.createElement(GenealogyApp,null)));
