@@ -928,7 +928,8 @@ function kartbildUrl(lat,lon,layer){
 }
 
 // ═══ PLACES EDITOR ═══════════════════════════════════════
-function PlacesEditor({individuals,families,extraLocs,setExtraLocs,selectedId,buildPersonLocations,lookupLocation}){
+function PlacesEditor({individuals,families,extraLocs,setExtraLocs,selectedId,buildPersonLocations,lookupLocation,hasParsedData}){
+  
   const {useState,useRef,useEffect,useCallback}=React;
   var pids=individuals?Object.keys(individuals):[];
   var _s=useState;
