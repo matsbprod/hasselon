@@ -650,16 +650,9 @@ function MapView(props) {
   var TILE_SOURCES={
     osm:{name:"Standard",url:function(z,x,y){var s=["a","b","c"][(x+y)%3];return"https://"+s+".tile.openstreetmap.org/"+z+"/"+x+"/"+y+".png";},attr:"\u00A9 OpenStreetMap"},
     lm:{name:"Topo Sverige",url:function(z,x,y){return"https://maps.lantmateriet.se/open/topowebb-ccby/v1/wmts/1.0.0/topowebb/default/3857/"+z+"/"+y+"/"+x+".png";},attr:"\u00A9 Lantm\u00e4teriet CC0"},
-    topo:{name:"Topo",url:function(z,x,y){var s=["a","b","c"][(x+y)%3];return"https://"+s+".tile.opentopomap.org/"+z+"/"+x+"/"+y+".png";},attr:"\u00A9 OpenTopoMap"},
-    cycle:{name:"Terrain",url:function(z,x,y){return"https://tile.thunderforest.com/landscape/"+z+"/"+x+"/"+y+".png?apikey=6170aad10dfd42a38d4d8c709a536f38";},attr:"\u00A9 Thunderforest"},
-    ekon:{name:"Ekonomiska 1935-78",noCors:true,url:function(z,x,y){
-      var iy=(Math.pow(2,z)-1)-y;
-      return "https://mapproxy.openstreetmap.se/tms/1.0.0/ek_EPSG3857/"+z+"/"+x+"/"+iy+".png";
-    },attr:"\u00A9 Lantm\u00e4teriet / OSM.se"},
-    harad:{name:"H\u00e4radskartan 1859-1934",noCors:true,url:function(z,x,y){
-      var iy=(Math.pow(2,z)-1)-y;
-      return "https://mapproxy.openstreetmap.se/tms/1.0.0/hk_EPSG3857/"+z+"/"+x+"/"+iy+".png";
-    },attr:"\u00A9 Lantm\u00e4teriet / OSM.se"},
+    kb_eko:{name:"Ekonomisk 1930-80",noCors:true,url:function(z,x,y){return"https://mapproxy.openstreetmap.se/tms/1.0.0/ek_EPSG3857/"+z+"/"+x+"/"+(Math.pow(2,z)-1-y)+".png";},attr:"\u00A9 Lantm\u00e4teriet"},
+    kb_harad:{name:"H\u00e4radskartan 1860-1930",noCors:true,url:function(z,x,y){return"https://mapproxy.openstreetmap.se/tms/1.0.0/hk_EPSG3857/"+z+"/"+x+"/"+(Math.pow(2,z)-1-y)+".png";},attr:"\u00A9 Lantm\u00e4teriet"},
+    kb_flyg60:{name:"Flygfoto \u007E1960",noCors:true,url:function(z,x,y){return"https://mapproxy.openstreetmap.se/tms/1.0.0/hfl60_EPSG3857/"+z+"/"+x+"/"+(Math.pow(2,z)-1-y)+".png";},attr:"\u00A9 Lantm\u00e4teriet"},
   };
 
   // Slippy map math (Web Mercator)
