@@ -151,6 +151,16 @@ var GEOCODE={
   // === Norway / International ===
   "grimstad":{lat:58.3405,lon:8.5930},"norge":{lat:59.0,lon:10.0},"usa":{lat:40.7128,lon:-74.0060},"minnesota":{lat:44.9778,lon:-93.2650},"amerika":{lat:40.7128,lon:-74.0060},
 };
+function lookupLocation(place){
+  if(!place)return null;
+  var p=place.toLowerCase();
+  var keys=Object.keys(GEOCODE);
+  for(var ki=0;ki<keys.length;ki++){
+    if(p.indexOf(keys[ki])>=0)return GEOCODE[keys[ki]];
+  }
+  return null;
+}
+
 
 // Pre-sort keys longest first so "kristinehamn" matches before "kristine"
 var GEOCODE_KEYS=Object.keys(GEOCODE).sort(function(a,b){return b.length-a.length;});
@@ -875,6 +885,12 @@ function MapView(props) {
 }
 
 /* ═══ MAIN APP ════════════════════════════════════════════════ */
+function kartbildUrl(lat,lon,layer){
+  // layer codes: eko1=0x10000, eko2=0x20000, harad=0x4000, flyg1960=0x100, flyg1975=0x200, topo=0x1000
+  if(!lat||!lon)return null;
+  return 'https://kartbild.com/#15/'+lat.toFixed(4)+'/'+lon.toFixed(4)+'/'+layer;
+}
+
 function GenealogyApp(){
   var _s=useState;var s1=_s(null),layout=s1[0],setLayout=s1[1];var s2=_s(null),sel=s2[0],setSel=s2[1];var sInsp=_s(null),inspPerson=sInsp[0],setInspPerson=sInsp[1];var s3=_s(""),search=s3[0],setSearch=s3[1];var s4=_s(new Set()),hlIds=s4[0],setHlIds=s4[1];var s5=_s(true),showUp=s5[0],setShowUp=s5[1];var s6=_s({}),photoTex=s6[0],setPhotoTex=s6[1];var s7=_s(false),isSample=s7[0],setIsSample=s7[1];var s8=_s(null),parsedData=s8[0],setParsedData=s8[1];var s9=_s(1970),sliderYear=s9[0],setSliderYear=s9[1];var s10=_s(false),isPlaying=s10[0],setIsPlaying=s10[1];var s11=_s(null),rangeStart=s11[0],setRangeStart=s11[1];var s12=_s(null),rangeEnd=s12[0],setRangeEnd=s12[1];
   var s14=_s({}),photoUrls=s14[0],setPhotoUrls=s14[1]; // {gedcomId: [{url, label},...]}
@@ -883,7 +899,7 @@ function GenealogyApp(){
   var s17=_s("3d"),rightView=s17[0],setRightView=s17[1];
   useEffect(function(){if(rightView==="3d"){setTimeout(function(){window.dispatchEvent(new Event("resize"));},60);}},[rightView]);
   var s18=_s("ancestors"),pedigreeMode=s18[0],setPedigreeMode=s18[1];
-  var cvRef=useRef(null),frameRef=useRef(null),meshRef=useRef({}),clickRef=useRef([]),camRef=useRef(null),rayRef=useRef(new THREE.Raycaster()),mouRef=useRef(new THREE.Vector2()),upCamRef=useRef(null);
+  var cvRef=useRef(null),frameRef=useRef(null),meshRef=useRef({}),clickRef=useRef([]),camRef=useRef(null),rayRef=useRef(null),mouRef=useRef(null),upCamRef=useRef(null);
   var ctrl=useRef({down:false,right:false,sx:0,sy:0,px:0,py:0,theta:0.3,phi:1.0,radius:80,tx:0,ty:2,tz:10});
   var playRef=useRef(null);
 
@@ -924,7 +940,7 @@ function GenealogyApp(){
               ctx.beginPath();ctx.arc(64,64,60,0,Math.PI*2);ctx.clip();
               ctx.drawImage(img,sx,sy,sz,sz,0,0,128,128);
               ctx.beginPath();ctx.arc(64,64,60,0,Math.PI*2);ctx.strokeStyle="#fff";ctx.lineWidth=3;ctx.stroke();
-              setPhotoTex(function(prev){var n2={};for(var k2 in prev)n2[k2]=prev[k2];n2[p.gid]=new THREE.CanvasTexture(cv);return n2;});
+              setPhotoTex(function(prev){var n2={};for(var k2 in prev)n2[k2]=prev[k2];if(typeof THREE!=='undefined')n2[p.gid]=new THREE.CanvasTexture(cv);return n2;});
             };
             img.src=dataUrl;
           }
@@ -938,6 +954,9 @@ function GenealogyApp(){
   /* ── 3D SCENE — proper tree connectors ─────────────────── */
   useEffect(function(){
     if(!layout||!cvRef.current)return;
+    if(typeof THREE==='undefined')return;
+    if(!rayRef.current)rayRef.current=new THREE.Raycaster();
+    if(!mouRef.current)mouRef.current=new THREE.Vector2();
     var cv=cvRef.current,ct=cv.parentElement,W=ct.clientWidth,H=ct.clientHeight;
     var scene=new THREE.Scene();scene.background=new THREE.Color(C.bg);scene.fog=new THREE.FogExp2(C.bg,0.001);
     var cam=new THREE.PerspectiveCamera(50,W/H,0.1,2000);camRef.current=cam;
@@ -1112,6 +1131,12 @@ function GenealogyApp(){
           </div>
           <div style={{padding:"6px 12px 10px",fontSize:11,display:"grid",gap:3}}>
             {panelPerson.birthDate&&<div><span style={{color:C.dim}}>Born </span>{panelPerson.birthDate}{panelPerson.birthPlace?" · "+panelPerson.birthPlace:""}</div>}
+              {panelPerson.birthPlace&&lookupLocation(panelPerson.birthPlace)&&<div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:4}}>
+                  <a href={kartbildUrl((lookupLocation(panelPerson.birthPlace)||{}).lat,(lookupLocation(panelPerson.birthPlace)||{}).lon,0x10000)} target="_blank" style={{fontSize:9,padding:"2px 6px",background:"rgba(255,200,50,0.15)",border:"1px solid rgba(255,200,50,0.4)",borderRadius:3,color:"#ffd060",textDecoration:"none"}}>📜 Ekon.karta</a>
+                  <a href={kartbildUrl((lookupLocation(panelPerson.birthPlace)||{}).lat,(lookupLocation(panelPerson.birthPlace)||{}).lon,0x4000)} target="_blank" style={{fontSize:9,padding:"2px 6px",background:"rgba(255,200,50,0.15)",border:"1px solid rgba(255,200,50,0.4)",borderRadius:3,color:"#ffd060",textDecoration:"none"}}>🗺 Häradskartan</a>
+                  <a href={kartbildUrl((lookupLocation(panelPerson.birthPlace)||{}).lat,(lookupLocation(panelPerson.birthPlace)||{}).lon,0x100)} target="_blank" style={{fontSize:9,padding:"2px 6px",background:"rgba(100,180,255,0.15)",border:"1px solid rgba(100,180,255,0.4)",borderRadius:3,color:"#64b4ff",textDecoration:"none"}}>✈ Flygfoto 1960</a>
+                  <a href={kartbildUrl((lookupLocation(panelPerson.birthPlace)||{}).lat,(lookupLocation(panelPerson.birthPlace)||{}).lon,0x200)} target="_blank" style={{fontSize:9,padding:"2px 6px",background:"rgba(100,180,255,0.15)",border:"1px solid rgba(100,180,255,0.4)",borderRadius:3,color:"#64b4ff",textDecoration:"none"}}>✈ Flygfoto 1975</a>
+                </div>}
             {panelPerson.deathDate&&<div><span style={{color:C.dim}}>Died </span>{panelPerson.deathDate}{panelPerson.deathPlace?" · "+panelPerson.deathPlace:""}</div>}
           </div>
           {photoUrls[panelPerson.id]&&photoUrls[panelPerson.id].length>0&&(
@@ -1160,4 +1185,11 @@ function GenealogyApp(){
 function AvPrev(props){var ref=useRef(null);useEffect(function(){if(!ref.current)return;var m=PM[props.pid];if(!m)return;var cv=genAvatar(m);var ctx=ref.current.getContext("2d");ref.current.width=36;ref.current.height=36;ctx.drawImage(cv,0,0,128,128,0,0,36,36);},[props.pid]);return <canvas ref={ref} width={36} height={36} style={{width:36,height:36,borderRadius:8,border:"2px solid "+(props.sex==="M"?"#4a9eff":"#ff6b9d"),background:"#080c14"}}/>;}
 
 
-const _root=ReactDOM.createRoot(document.getElementById('root'));_root.render(React.createElement(GenealogyApp));
+class ErrorBoundary extends React.Component {
+  constructor(props){super(props);this.state={err:null};}
+  componentDidCatch(e){this.setState({err:e});}
+  static getDerivedStateFromError(e){return {err:e};}
+  render(){if(this.state.err)return React.createElement('div',{style:{color:'red',background:'#111',padding:20,fontSize:12,whiteSpace:'pre-wrap'}},'RENDER ERROR: '+this.state.err.message+'\n'+String(this.state.err.stack).substring(0,600));return this.props.children;}
+}
+const _root=ReactDOM.createRoot(document.getElementById('root'));
+_root.render(React.createElement(ErrorBoundary,null,React.createElement(GenealogyApp,null)));
