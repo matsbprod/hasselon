@@ -4,7 +4,7 @@ const { useState, useRef, useEffect, useCallback, useMemo } = React;
 /* ═══ GEDCOM PARSER ═══════════════════════════════════════════ */
 function cleanText(s){if(!s)return"";return s.replace(/\r/g,"").replace(/\xe8O/g,"Ö").replace(/\xe8o/g,"ö").replace(/\xe8A/g,"Ä").replace(/\xe8a/g,"ä").replace(/\xea/g,"å").replace(/\xeaA/g,"Å").replace(/\xe8U/g,"Ü").replace(/\xe8u/g,"ü").trim();}
 function parseNameLine(v){var val=cleanText(v),g="",s="";var m=val.match(/\/([^/]*)\//);if(m){s=m[1].trim();g=val.replace(/\/[^/]*\//,"").trim();}else g=val.replace(/\//g,"").trim();return{given:g.replace(/\*/g,"").trim(),surname:s};}
-function parseGedcom(text){var individuals={},families={},ent=null,sub=null,lines=text.split(/\r?\n/);for(var i=0;i<lines.length;i++){var line=lines[i].replace(/\r$/,"");var m=line.match(/^(\d+)\s+(@[^@]+@)?\s*(\w+)\s*(.*)?$/);if(!m)continue;var lv=parseInt(m[1]),id=m[2],tag=m[3],v=(m[4]||"").replace(/\r/g,"").trim();if(lv===0){sub=null;if(tag==="INDI"&&id){ent={type:"INDI",id:id,givenName:"",surname:"",rawName:"",sex:"",birthDate:"",birthPlace:"",deathDate:"",deathPlace:"",familySpouse:[],familyChild:[]};individuals[id]=ent;}else if(tag==="FAM"&&id){ent={type:"FAM",id:id,husband:null,wife:null,children:[]};families[id]=ent;}else ent=null;}else if(lv===1&&ent){sub=tag;if(ent.type==="INDI"){if(tag==="NAME"){var p=parseNameLine(v);if(!ent.rawName){ent.rawName=v;if(p.given)ent.givenName=p.given;if(p.surname)ent.surname=p.surname;}}if(tag==="SEX")ent.sex=v;if(tag==="FAMS")ent.familySpouse.push(v);if(tag==="FAMC")ent.familyChild.push(v);}if(ent.type==="FAM"){if(tag==="HUSB")ent.husband=v;if(tag==="WIFE")ent.wife=v;if(tag==="CHIL")ent.children.push(v);}}else if(lv===2&&ent&&ent.type==="INDI"){if(sub==="NAME"&&tag==="GIVN"&&v)ent.givenName=cleanText(v);if(sub==="NAME"&&tag==="SURN"&&v)ent.surname=cleanText(v);if(sub==="BIRT"&&tag==="DATE")ent.birthDate=cleanText(v);if(sub==="BIRT"&&tag==="PLAC")ent.birthPlace=cleanText(v);if(sub==="DEAT"&&tag==="DATE")ent.deathDate=cleanText(v);if(sub==="DEAT"&&tag==="PLAC")ent.deathPlace=cleanText(v);}}for(var iid in individuals){var ind=individuals[iid];var dn="";if(ind.givenName&&ind.surname)dn=ind.givenName+" "+ind.surname;else if(ind.givenName)dn=ind.givenName;else if(ind.surname)dn=ind.surname;ind.name=dn.replace(/\//g,"").trim()||"Unknown";}return{individuals:individuals,families:families};}
+function parseGedcom(text){var individuals={},families={},ent=null,sub=null,lines=text.split(/\r?\n/);for(var i=0;i<lines.length;i++){var line=lines[i].replace(/\r$/,"");var m=line.match(/^(\d+)\s+(@[^@]+@)?\s*(\w+)\s*(.*)?$/);if(!m)continue;var lv=parseInt(m[1]),id=m[2],tag=m[3],v=(m[4]||"").replace(/\r/g,"").trim();if(lv===0){sub=null;if(tag==="INDI"&&id){ent={type:"INDI",id:id,givenName:"",surname:"",rawName:"",sex:"",birthDate:"",birthPlace:"",deathDate:"",deathPlace:"",occupation:"",events:[],familySpouse:[],familyChild:[]};individuals[id]=ent;}else if(tag==="FAM"&&id){ent={type:"FAM",id:id,husband:null,wife:null,children:[]};families[id]=ent;}else ent=null;}else if(lv===1&&ent){sub=tag;if(ent.type==="INDI"){if(tag==="NAME"){var p=parseNameLine(v);if(!ent.rawName){ent.rawName=v;if(p.given)ent.givenName=p.given;if(p.surname)ent.surname=p.surname;}}if(tag==="SEX")ent.sex=v;if(tag==="FAMS")ent.familySpouse.push(v);if(tag==="FAMC")ent.familyChild.push(v);if(tag==="OCCU"&&v)ent.occupation=cleanText(v);if(tag==="RESI"||tag==="BIRT"||tag==="DEAT"||tag==="EMIG"||tag==="IMMI"||tag==="CHR"){if(!ent._curEvent)ent._curEvent={type:tag,date:"",place:""};ent._curEvent.type=tag;ent._curEvent.date="";ent._curEvent.place="";}}if(ent.type==="FAM"){if(tag==="HUSB")ent.husband=v;if(tag==="WIFE")ent.wife=v;if(tag==="CHIL")ent.children.push(v);}}else if(lv===2&&ent&&ent.type==="INDI"){if(sub==="NAME"&&tag==="GIVN"&&v)ent.givenName=cleanText(v);if(sub==="NAME"&&tag==="SURN"&&v)ent.surname=cleanText(v);if(sub==="BIRT"&&tag==="DATE")ent.birthDate=cleanText(v);if(sub==="BIRT"&&tag==="PLAC")ent.birthPlace=cleanText(v);if(sub==="DEAT"&&tag==="DATE")ent.deathDate=cleanText(v);if(sub==="DEAT"&&tag==="PLAC")ent.deathPlace=cleanText(v);if(sub==="OCCU"&&tag==="DATE")ent.occupation=ent.occupation||"";if(tag==="DATE"&&(sub==="RESI"||sub==="EMIG"||sub==="IMMI"||sub==="CHR")){if(!ent.events)ent.events=[];if(!ent._curEvent)ent._curEvent={type:sub,date:"",place:""};ent._curEvent.date=cleanText(v);}if(tag==="PLAC"&&(sub==="RESI"||sub==="EMIG"||sub==="IMMI"||sub==="CHR")){if(!ent.events)ent.events=[];if(!ent._curEvent)ent._curEvent={type:sub,date:"",place:""};ent._curEvent.place=cleanText(v);if(ent._curEvent.place){ent.events.push({type:ent._curEvent.type,date:ent._curEvent.date,place:ent._curEvent.place});ent._curEvent=null;}}}}for(var iid in individuals){var ind=individuals[iid];var dn="";if(ind.givenName&&ind.surname)dn=ind.givenName+" "+ind.surname;else if(ind.givenName)dn=ind.givenName;else if(ind.surname)dn=ind.surname;ind.name=dn.replace(/\//g,"").trim()||"Unknown";}return{individuals:individuals,families:families};}
 
 /* ═══ LAYOUT — proper tree style ══════════════════════════════
    Like reference image: spouses side-by-side with horizontal line,
@@ -651,7 +651,6 @@ function MapView(props) {
     osm:{name:"Standard",url:function(z,x,y){var s=["a","b","c"][(x+y)%3];return"https://"+s+".tile.openstreetmap.org/"+z+"/"+x+"/"+y+".png";},attr:"\u00A9 OpenStreetMap"},
     topo:{name:"Topo",url:function(z,x,y){var s=["a","b","c"][(x+y)%3];return"https://"+s+".tile.opentopomap.org/"+z+"/"+x+"/"+y+".png";},attr:"\u00A9 OpenTopoMap"},
     cycle:{name:"Terrain",url:function(z,x,y){return"https://tile.thunderforest.com/landscape/"+z+"/"+x+"/"+y+".png?apikey=6170aad10dfd42a38d4d8c709a536f38";},attr:"\u00A9 Thunderforest"},
-    tiles_ekon:{name:"Ekonomisk karta",noCors:true,url:function(z,x,y){return"tiles_ekon/"+z+"/"+x+"/"+y+".png";},attr:"\u00A9 Lantm\u00e4teriet CC0"},
   };
 
   // Slippy map math (Web Mercator)
@@ -877,6 +876,51 @@ function MapView(props) {
 }
 
 /* ═══ MAIN APP ════════════════════════════════════════════════ */
+// Build timeline of locations for a person
+// Combines: 1) extraLocs (locations.json), 2) GEDCOM RESI events, 3) birth/death geocoding
+function buildPersonLocations(ind, extraLocs){
+  if(!ind)return [];
+  var locs=[];
+  var id=ind.id||ind.rawId;
+  
+  // 1. Explicit locations from locations.json (highest priority)
+  if(extraLocs&&extraLocs[id]){
+    return extraLocs[id]; // already formatted [{lat,lon,from,to,place,type}]
+  }
+  
+  // 2. Parse year from date string
+  function yr(d){if(!d)return null;var m=d.match(/\d{4}/);return m?parseInt(m[0]):null;}
+  
+  var birthY=yr(ind.birthDate), deathY=yr(ind.deathDate);
+  
+  // 3. Birth place
+  if(ind.birthPlace){
+    var bloc=lookupLocation(ind.birthPlace);
+    if(bloc)locs.push({lat:bloc.lat,lon:bloc.lon,from:birthY,to:birthY,place:ind.birthPlace,type:"birth"});
+  }
+  
+  // 4. RESI events from GEDCOM
+  if(ind.events){
+    ind.events.forEach(function(ev){
+      var eloc=lookupLocation(ev.place);
+      if(eloc){
+        var ey=yr(ev.date);
+        locs.push({lat:eloc.lat,lon:eloc.lon,from:ey,to:ey,place:ev.place,type:ev.type.toLowerCase(),date:ev.date});
+      }
+    });
+  }
+  
+  // 5. Death place (if different from birth)
+  if(ind.deathPlace&&ind.deathPlace!==ind.birthPlace){
+    var dloc=lookupLocation(ind.deathPlace);
+    if(dloc)locs.push({lat:dloc.lat,lon:dloc.lon,from:deathY,to:deathY,place:ind.deathPlace,type:"death"});
+  }
+  
+  // Sort by year
+  locs.sort(function(a,b){return (a.from||0)-(b.from||0);});
+  return locs;
+}
+
 function kartbildUrl(lat,lon,layer){
   // layer codes: eko1=0x10000, eko2=0x20000, harad=0x4000, flyg1960=0x100, flyg1975=0x200, topo=0x1000
   if(!lat||!lon)return null;
@@ -903,6 +947,14 @@ function GenealogyApp(){
   var handleFile=useCallback(function(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(ev){var pd=parseGedcom(ev.target.result);setParsedData(pd);setLayout(computeLayout(pd.individuals,pd.families));setIsSample(false);setPhotoTex({});setShowUp(false);setRangeStart(null);setRangeEnd(null);};r.readAsText(f);},[]);
 
   // Photo folder upload: expects files like I2158_age25.png, mapping.txt
+  var sLoc=_s({}),extraLocs=sLoc[0],setExtraLocs=sLoc[1];
+  var handleLocations=useCallback(function(e){
+    var f=e.target.files[0];if(!f)return;
+    var r=new FileReader();r.onload=function(ev){
+      try{var data=JSON.parse(ev.target.result);setExtraLocs(data);console.log("Locations loaded:",Object.keys(data).length,"persons");}
+      catch(err){alert("Fel i locations.json: "+err.message);}
+    };r.readAsText(f);
+  },[]);
   var handlePhotos=useCallback(function(e){
     var files=Array.from(e.target.files);
     if(!files.length)return;
@@ -1099,7 +1151,7 @@ function GenealogyApp(){
             <label style={{padding:"12px 24px",background:"linear-gradient(135deg,#4a9eff,#3a7fd5)",color:"#fff",borderRadius:10,cursor:"pointer",fontSize:13,fontWeight:600}}>Upload .ged<input type="file" accept=".ged,.gedcom" onChange={handleFile} style={{display:"none"}}/></label>
             <button onClick={loadSample} style={{padding:"12px 24px",background:"rgba(255,255,255,0.05)",color:C.text,borderRadius:10,cursor:"pointer",fontSize:13,fontWeight:600,border:"1px solid "+C.border}}>Sample Family</button>
           </div>
-          <p style={{marginTop:24,color:C.dim,fontSize:11}}>GEDCOM 5.5 · Map: Western Sweden with zoom/pan</p>
+          <p style={{marginTop:24,color:C.dim,fontSize:11}}>GEDCOM 5.5 · Map: Western Sweden with zoom/pan · <a href="https://github.com/matsbprod/hasselon" target="_blank" style={{color:C.accent}}>locations.json</a></p>
         </div>
       </div>)}
       {!showUp&&(<div style={{flex:1,position:"relative",minWidth:0,display:rightView==="3d"?"block":"none"}}>
@@ -1109,7 +1161,11 @@ function GenealogyApp(){
           <div style={{...PS,pointerEvents:"all",flex:1,maxWidth:220,padding:"4px 10px"}}><div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:11,opacity:0.5}}>&#x1F50D;</span><input type="text" placeholder="Search..." value={search} onChange={function(e){setSearch(e.target.value);}} style={{width:"100%",background:"transparent",border:"none",outline:"none",color:C.text,fontSize:12,fontFamily:"inherit"}}/>{search&&<button onClick={function(){setSearch("");}} style={{background:"none",border:"none",color:C.dim,cursor:"pointer",fontSize:13,padding:0}}>x</button>}</div></div>
           {stats&&<div style={{...PS,pointerEvents:"all",padding:"5px 10px",fontSize:10}}><span style={{color:C.dim}}>People </span><strong>{stats.p}</strong><span style={{color:C.dim,marginLeft:6}}>Gen </span><strong>{stats.g}</strong>{photoCount>0&&<span style={{color:"#66d9a0",marginLeft:6}}>{photoCount} photos</span>}</div>}
           <label style={{...PS,pointerEvents:"all",padding:"5px 10px",cursor:"pointer",fontSize:10,color:C.accent,fontWeight:600}}>+<input type="file" accept=".ged,.gedcom" onChange={handleFile} style={{display:"none"}}/></label>
-          <label style={{...PS,pointerEvents:"all",padding:"5px 10px",cursor:"pointer",fontSize:10,color:"#66d9a0",fontWeight:600}} title="Upload photo folder (files named I1234_label.jpg)">&#128247;<input type="file" accept="image/*,.txt" multiple onChange={handlePhotos} style={{display:"none"}}/></label>
+          <label style={{...PS,pointerEvents:"all",padding:"5px 10px",cursor:"pointer",fontSize:10,color:"#c4a632",fontWeight:600}} title="Ladda locations.json">
+              📍 Platser
+              <input type="file" accept=".json" onChange={handleLocations} style={{display:"none"}}/>
+            </label>
+            <label style={{...PS,pointerEvents:"all",padding:"5px 10px",cursor:"pointer",fontSize:10,color:"#66d9a0",fontWeight:600}} title="Upload photo folder (files named I1234_label.jpg)">&#128247;<input type="file" accept="image/*,.txt" multiple onChange={handlePhotos} style={{display:"none"}}/></label>
           <button onClick={function(){var cc=ctrl.current;if(cc.phi<0.2){cc.phi=1.0;cc.radius=80;}else{cc.phi=0.05;cc.theta=Math.PI/2;cc.radius=100;}if(upCamRef.current)upCamRef.current();}} style={{...PS,pointerEvents:"all",padding:"5px 10px",cursor:"pointer",fontSize:10,color:"#9775fa",fontWeight:600,border:"none"}} title="Toggle top/perspective view">&#8982; Top</button>
           <button onClick={function(){var cc=ctrl.current;cc.theta=0.3;cc.phi=1.0;cc.radius=80;cc.tx=0;cc.ty=2;cc.tz=layout?(layout.maxGeneration*22)/2:10;if(upCamRef.current)upCamRef.current();}} style={{...PS,pointerEvents:"all",padding:"5px 10px",cursor:"pointer",fontSize:10,color:"#ffa94d",fontWeight:600,border:"none"}} title="Reset camera to default view">&#8634; Reset</button>
         </div>
@@ -1149,20 +1205,20 @@ function GenealogyApp(){
           {(rightView==="pedigree"||rightView==="fan")&&<div style={{display:"flex",borderLeft:"1px solid "+C.border}}><button onClick={function(){setPedigreeMode("ancestors");}} style={{padding:"8px 10px",fontSize:9,fontWeight:pedigreeMode==="ancestors"?700:400,color:pedigreeMode==="ancestors"?"#66d9a0":C.dim,background:pedigreeMode==="ancestors"?"rgba(102,217,160,0.08)":"transparent",border:"none",cursor:"pointer"}}>{"↑ Ancestors"}</button><button onClick={function(){setPedigreeMode("descendants");}} style={{padding:"8px 10px",fontSize:9,fontWeight:pedigreeMode==="descendants"?700:400,color:pedigreeMode==="descendants"?"#ff6b9d":C.dim,background:pedigreeMode==="descendants"?"rgba(255,107,157,0.08)":"transparent",border:"none",cursor:"pointer"}}>{"↓ Descendants"}</button></div>}
         </div>
         <div style={{flex:1,position:"relative",minHeight:0}}>
-          {rightView==="map"&&<MapView individuals={parsedData.individuals} year={sliderYear} rangeStart={effStart} rangeEnd={effEnd} selectedId={sel?sel.id:null} onSelect={mapSel} isSample={isSample}/>}
+          {rightView==="map"&&<MapView individuals={parsedData.individuals} year={sliderYear} rangeStart={effStart} rangeEnd={effEnd} selectedId={sel?sel.id:null} onSelect={mapSel} isSample={isSample} extraLocs={extraLocs} buildPersonLocations={buildPersonLocations}/>}
           {rightView==="pedigree"&&<PedigreeView individuals={parsedData.individuals} families={parsedData.families} selectedId={sel?sel.id:null} mode={pedigreeMode} onInspect={function(id){var p=parsedData.individuals[id];if(p){p.id=id;setInspPerson(p);}}} onSelect={function(id){var nd=layout.nodes.find(function(n){return n.id===id;});setSel(nd||null);}} photoUrls={photoUrls}/>}
           {rightView==="fan"&&<FanView individuals={parsedData.individuals} families={parsedData.families} selectedId={sel?sel.id:null} mode={pedigreeMode} onInspect={function(id){var p=parsedData.individuals[id];if(p){p.id=id;setInspPerson(p);}}} onSelect={function(id){var nd=layout.nodes.find(function(n){return n.id===id;});setSel(nd||null);}} photoUrls={photoUrls}/>}
-              {rightView==="kb"&&(<div style={{width:"100%",height:"100%",position:"relative"}}>
-              <iframe
-                src={(function(){var lat=sel&&sel.birthPlace?lookupLocation(sel.birthPlace):null;if(!lat&&sel)lat=lookupLocation(sel.birthPlace||"");var defLat=58.08,defLon=11.58;return "https://kartbild.com/#14/"+(lat?lat.lat:defLat)+"/"+(lat?lat.lon:defLon)+"/0x10000";})()}
-                style={{width:"100%",height:"100%",border:"none"}}
-                title="Kartbild historisk karta"
-              />
-              <div style={{position:"absolute",top:8,left:8,display:"flex",gap:4,flexWrap:"wrap",zIndex:10}}>
-                {[["Ekonomisk","0x10000"],["Flyg 1960","0x100"],["Flyg 1975","0x200"],["Topo","0x1000"]].map(function(kb){
-                  return <button key={kb[0]} onClick={function(){var lat=sel&&sel.birthPlace?lookupLocation(sel.birthPlace):null;var defLat=58.08,defLon=11.58;var url="https://kartbild.com/#14/"+(lat?lat.lat:defLat)+"/"+(lat?lat.lon:defLon)+"/"+kb[1];document.querySelector('iframe[title="Kartbild historisk karta"]').src=url;}} style={{fontSize:10,padding:"4px 8px",background:"rgba(0,0,0,0.7)",color:"#fff",border:"1px solid #555",borderRadius:4,cursor:"pointer"}}>{kb[0]}</button>;
+              {rightView==="kb"&&(<div style={{width:"100%",height:"100%",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16,background:C.bg,color:C.dim}}>
+              <div style={{fontSize:40}}>☉</div>
+              <div style={{fontSize:14,fontWeight:600,color:C.text}}>Kartbild.com historiska kartor</div>
+              <div style={{fontSize:12,textAlign:"center",maxWidth:300,lineHeight:1.6}}>Välj en person i 3D-vyn eller klicka på en plats på kartan för att öppna historisk karta</div>
+              {sel&&sel.birthPlace&&lookupLocation(sel.birthPlace)&&(<div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"center",marginTop:8}}>
+                {[["📜 Ekonomisk","0x10000"],["✈ Flygfoto 1960","0x100"],["✈ Flygfoto 1975","0x200"],["🗺 Topo","0x1000"]].map(function(kb){
+                  var loc=lookupLocation(sel.birthPlace);
+                  return <a key={kb[0]} href={"https://kartbild.com/#15/"+loc.lat.toFixed(4)+"/"+loc.lon.toFixed(4)+"/"+kb[1]} target="_blank" style={{padding:"10px 16px",background:"rgba(74,158,255,0.15)",border:"1px solid rgba(74,158,255,0.4)",borderRadius:8,color:C.accent,textDecoration:"none",fontSize:12,cursor:"pointer"}}>{kb[0]}</a>;
                 })}
-              </div>
+              </div>)}
+              {sel&&(!sel.birthPlace||!lookupLocation(sel.birthPlace))&&<div style={{fontSize:11,color:C.dim,marginTop:8}}>Vald person: {sel.name} — födelseort ej i geocoding-registret</div>}
             </div>)}
               }
         </div>
