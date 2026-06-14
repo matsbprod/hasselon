@@ -961,12 +961,17 @@ function PlacesLeafletMap({locs,editIdx,onCoords}){
       }).addTo(m);
       // Click to set coordinates
       m.on('click',function(e){
-        var lat=e.latlng.lat.toFixed(4),lon=e.latlng.lng.toFixed(4);
+        var lat=parseFloat(e.latlng.lat.toFixed(4)),lon=parseFloat(e.latlng.lng.toFixed(4));
         if(clickMarkerRef.current)m.removeLayer(clickMarkerRef.current);
         clickMarkerRef.current=L.marker([lat,lon],{
-          icon:L.divIcon({className:'',html:'<div style="background:#ffd060;width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.5)"></div>',iconSize:[14,14],iconAnchor:[7,7]})
-        }).addTo(m);
-        if(typeof window._placesSetCoords==='function')window._placesSetCoords(parseFloat(lat),parseFloat(lon));
+          icon:L.divIcon({className:'',html:'<div style="background:#ffd060;width:16px;height:16px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.6)"><div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#000;font-size:10px;font-weight:bold">+</div></div>',iconSize:[16,16],iconAnchor:[8,8]})
+        }).addTo(m).bindPopup('<b>'+lat+', '+lon+'</b><br><small>Öppna en plats för att koppla dessa koordinater</small>',{maxWidth:200}).openPopup();
+        window._pendingCoords={lat:lat,lon:lon};
+        if(typeof window._placesSetCoords==='function'){
+          window._placesSetCoords(lat,lon);
+          window._pendingCoords=null;
+          if(clickMarkerRef.current)clickMarkerRef.current.closePopup();
+        }
       });
       leafRef.current=m;
     }
@@ -1213,13 +1218,16 @@ function PlacesEditor({individuals,families,extraLocs,setExtraLocs,selectedId,bu
           var label=typeLabels[loc.type]||loc.type||"";
           var isManual=manualLocs&&manualLocs[i];
           return <div key={i}>
-            <div onClick={function(){setEditIdx(editIdx===i?null:i);}} style={{background:editIdx===i?"rgba(74,158,255,0.08)":"rgba(255,255,255,0.03)",border:"1px solid "+(editIdx===i?C2.accent:C2.border),borderRadius:8,padding:"8px 12px",cursor:"pointer",display:"flex",alignItems:"center",gap:10}}>
+            <div style={{background:editIdx===i?"rgba(74,158,255,0.08)":"rgba(255,255,255,0.03)",border:"1px solid "+(editIdx===i?C2.accent:C2.border),borderRadius:8,padding:"8px 12px",display:"flex",alignItems:"center",gap:10}}>
               <div style={{width:10,height:10,borderRadius:"50%",background:col,flexShrink:0}}/>
-              <div style={{flex:1}}>
+              <div onClick={function(){setEditIdx(editIdx===i?null:i);}} style={{flex:1,cursor:"pointer"}}>
                 <div style={{fontSize:13,fontWeight:500}}>{loc.place||"Okänd plats"}</div>
                 <div style={{fontSize:11,color:C2.dim}}>{loc.from||"?"}{loc.to&&loc.to!==loc.from?" – "+loc.to:""} · {label}{!loc.lat?" · ⚠ saknar koordinater":""}</div>
               </div>
-              <div style={{fontSize:10,color:isManual?"#2ecc71":C2.dim}}>{isManual?"✎":"auto"}</div>
+              <div style={{display:"flex",gap:4,alignItems:"center"}}>
+                {window._pendingCoords&&editIdx!==i&&<button onClick={function(e){e.stopPropagation();var p=window._pendingCoords;saveLoc(i,Object.assign({},loc,{lat:p.lat,lon:p.lon}));window._pendingCoords=null;if(clickMarkerRef2&&clickMarkerRef2.current){}}} style={{fontSize:10,padding:"3px 7px",background:"rgba(255,208,96,0.2)",border:"1px solid #ffd060",color:"#ffd060",borderRadius:4,cursor:"pointer",whiteSpace:"nowrap"}}>📍 Sätt här</button>}
+                <div onClick={function(){setEditIdx(editIdx===i?null:i);}} style={{fontSize:10,color:isManual?"#2ecc71":"#4a9eff",cursor:"pointer"}}>{isManual?"✎ manuell":"✎ redigera"}</div>
+              </div>
             </div>
             {editIdx===i&&<EditForm loc={loc} idx={i} onSave={saveLoc} onCancel={function(){setEditIdx(null);}} onDelete={deleteLoc}/>}
           </div>;
