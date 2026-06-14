@@ -718,7 +718,34 @@ function MapView(props) {
   function project(lat,lon,W,H,v){var z=v.zoom;var cxT=lon2tileX(v.cx,z),cyT=lat2tileY(v.cy,z);return{x:W/2+(lon2tileX(lon,z)-cxT)*256,y:H/2+(lat2tileY(lat,z)-cyT)*256};}
   function unproject(px,py,W,H,v){var z=v.zoom;var cxT=lon2tileX(v.cx,z),cyT=lat2tileY(v.cy,z);return{lon:tileX2lon(cxT+(px-W/2)/256,z),lat:tileY2lat(cyT+(py-H/2)/256,z)};}
 
-  var alive=useMemo(function(){if(!individuals)return[];var res=[];for(var id in individuals){var ind=individuals[id];var by=parseYear(ind.birthDate),dy=parseYear(ind.deathDate);if(!by)continue;if(year<by||(dy&&year>dy))continue;var loc=null,pl="";if(dy&&year>=dy-5&&ind.deathPlace){loc=geocodePlace(ind.deathPlace);pl=ind.deathPlace;}if(!loc&&ind.birthPlace){loc=geocodePlace(ind.birthPlace);pl=ind.birthPlace;}if(!loc)continue;res.push({id:id,name:ind.name,sex:ind.sex,lat:loc.lat,lon:loc.lon,place:pl,age:year-by});}return res;},[individuals,year]);
+  var alive=useMemo(function(){if(!individuals)return[];var res=[];for(var id in individuals){var ind=individuals[id];var by=parseYear(ind.birthDate),dy=parseYear(ind.deathDate);if(!by)continue;if(year<by||(dy&&year>dy))continue;
+    // Use buildPersonLocations if available for accurate timeline positions
+    var loc=null,pl="";
+    if(buildPersonLocations&&extraLocs!==undefined){
+      ind.id=id;
+      var personLocs=buildPersonLocations(ind,extraLocs||{});
+      // Find best loc for this year
+      var best=null;
+      for(var pi=0;pi<personLocs.length;pi++){
+        var pl2=personLocs[pi];
+        if(!pl2.lat||!pl2.lon)continue;
+        var pFrom=pl2.from||by,pTo=pl2.to||(dy||year+1);
+        if(year>=pFrom&&year<=pTo){best=pl2;break;}
+        if(!best&&year>=pFrom)best=pl2; // fallback: most recent past loc
+      }
+      if(!best&&personLocs.length>0){
+        // use first with coords
+        for(var pi2=0;pi2<personLocs.length;pi2++){if(personLocs[pi2].lat){best=personLocs[pi2];break;}}
+      }
+      if(best){loc={lat:best.lat,lon:best.lon};pl=best.place||"";}
+    }
+    // Fallback to geocoding
+    if(!loc){
+      if(dy&&year>=dy-5&&ind.deathPlace){loc=geocodePlace(ind.deathPlace);pl=ind.deathPlace;}
+      if(!loc&&ind.birthPlace){loc=geocodePlace(ind.birthPlace);pl=ind.birthPlace;}
+    }
+    if(!loc)continue;
+    res.push({id:id,name:ind.name,sex:ind.sex,lat:loc.lat,lon:loc.lon,place:pl,age:year-by});}return res;},[individuals,year,extraLocs,buildPersonLocations]);
 
   function loadTile(z,tx,ty,layer,cb){
     var key=layer+"/"+z+"/"+tx+"/"+ty;
@@ -1218,7 +1245,23 @@ function PlacesEditor({individuals,families,extraLocs,setExtraLocs,selectedId,bu
           var label=typeLabels[loc.type]||loc.type||"";
           var isManual=manualLocs&&manualLocs[i];
           return <div key={i}>
-            <div style={{background:editIdx===i?"rgba(74,158,255,0.08)":"rgba(255,255,255,0.03)",border:"1px solid "+(editIdx===i?C2.accent:C2.border),borderRadius:8,padding:"8px 12px",display:"flex",alignItems:"center",gap:10}}>
+            <div
+              draggable={true}
+              onDragStart={function(){window._dragIdx=i;}}
+              onDragOver={function(e){e.preventDefault();window._dragOver=i;}}
+              onDrop={function(e){e.preventDefault();
+                var from=window._dragIdx,to=window._dragOver;
+                if(from!==undefined&&to!==undefined&&from!==to){
+                  var cur=extraLocs[editId]?[...extraLocs[editId]]:[...locs];
+                  var item=cur.splice(from,1)[0];cur.splice(to,0,item);
+                  var next=Object.assign({},extraLocs);next[editId]=cur;
+                  setExtraLocs(next);
+                  try{localStorage.setItem('slakttrads_locations',JSON.stringify(next));}catch(ex){}
+                }
+                window._dragIdx=undefined;window._dragOver=undefined;
+              }}
+              style={{background:editIdx===i?"rgba(74,158,255,0.08)":"rgba(255,255,255,0.03)",border:"1px solid "+(editIdx===i?C2.accent:C2.border),borderRadius:8,padding:"8px 12px",display:"flex",alignItems:"center",gap:10,cursor:"grab"}}>
+              <div style={{color:C2.dim,fontSize:14,cursor:"grab",userSelect:"none"}} title="Dra för att ändra ordning">⠿</div>
               <div style={{width:10,height:10,borderRadius:"50%",background:col,flexShrink:0}}/>
               <div onClick={function(){setEditIdx(editIdx===i?null:i);}} style={{flex:1,cursor:"pointer"}}>
                 <div style={{fontSize:13,fontWeight:500}}>{loc.place||"Okänd plats"}</div>
