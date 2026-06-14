@@ -257,6 +257,15 @@ function mkSilhouette(sex){
   _silhCache[key]=cv;
   return cv;
 }
+function mkSilhTex(sex){
+  var cv=mkSilhouette(sex);
+  if(!cv||typeof THREE==='undefined')return null;
+  var key=(sex||'U')+'_tex';
+  if(_silhCache[key])return _silhCache[key];
+  var tex=new THREE.CanvasTexture(cv);
+  _silhCache[key]=tex;
+  return tex;
+}
 function mkLabel(n,dt,hl){
   var cv=document.createElement("canvas");cv.width=400;cv.height=120;
   var x=cv.getContext("2d");x.textAlign="center";x.textBaseline="top";
@@ -1277,7 +1286,7 @@ function GenealogyApp(){
       var bH=1.0;var bld=new THREE.Mesh(new THREE.BoxGeometry(1.4,bH,1.4),new THREE.MeshStandardMaterial({color:bc,roughness:0.35,metalness:0.3,emissive:new THREE.Color(bc),emissiveIntensity:isHL?0.35:0.06}));bld.position.y=bH/2+0.2;bld.castShadow=true;bld.userData={nodeId:n.id};grp.add(bld);clickables.push(bld);
       grp.add(new THREE.Mesh(new THREE.BoxGeometry(1.5,0.12,1.5),new THREE.MeshStandardMaterial({color:gc3,emissive:new THREE.Color(gc3),emissiveIntensity:0.25,roughness:0.2,metalness:0.6})).translateY(bH+0.2));
       var pT=photoTex[n.id];
-      var portTex=pT||mkSilhouette(n.sex);
+      var portTex=pT||mkSilhTex(n.sex);
       var ps=new THREE.Sprite(new THREE.SpriteMaterial({map:portTex,transparent:true}));
       ps.position.y=bH+2.1;ps.scale.set(pT?2.4:2.2,pT?2.4:2.75,1);ps.userData={nodeId:n.id};grp.add(ps);clickables.push(ps);
       var ds=[n.birthDate,n.deathDate].filter(Boolean),dt=ds.length===2?ds[0]+" - "+ds[1]:(ds[0]||"");
@@ -1375,7 +1384,7 @@ function GenealogyApp(){
     function tM(e){e.preventDefault();if(e.touches.length===1&&cc.down){cc.theta-=(e.touches[0].clientX-cc.sx)*0.005;cc.phi=Math.max(0.05,Math.min(1.5,cc.phi-(e.touches[0].clientY-cc.sy)*0.005));cc.sx=e.touches[0].clientX;cc.sy=e.touches[0].clientY;upCam();}else if(e.touches.length===2){var d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);cc.radius=Math.max(5,Math.min(800,cc.radius-(d-ld)*0.2));ld=d;upCam();}}
     function tE(){cc.down=false;}
     cv.addEventListener("touchstart",tS,{passive:false});cv.addEventListener("touchmove",tM,{passive:false});cv.addEventListener("touchend",tE);
-    var time=0;function animate(){frameRef.current=requestAnimationFrame(animate);time+=0.008;for(var id in meshes)meshes[id].group.position.y=Math.sin(time+meshes[id].group.position.x*0.2)*0.1;ren.render(scene,cam);}animate();
+    var time=0;function animate(){frameRef.current=requestAnimationFrame(animate);try{time+=0.008;for(var id in meshes)meshes[id].group.position.y=Math.sin(time+meshes[id].group.position.x*0.2)*0.1;ren.render(scene,cam);}catch(e){cancelAnimationFrame(frameRef.current);console.error('3D render error:',e);}}animate();
     function onR(){W=ct.clientWidth;H=ct.clientHeight;cam.aspect=W/H;cam.updateProjectionMatrix();ren.setSize(W,H);}window.addEventListener("resize",onR);
     return function(){cancelAnimationFrame(frameRef.current);window.removeEventListener("resize",onR);cv.removeEventListener("mousedown",onD);cv.removeEventListener("mouseup",onU);cv.removeEventListener("mousemove",onM);cv.removeEventListener("wheel",onW);cv.removeEventListener("click",onC);cv.removeEventListener("contextmenu",onX);cv.removeEventListener("touchstart",tS);cv.removeEventListener("touchmove",tM);cv.removeEventListener("touchend",tE);ren.dispose();};
   },[layout,hlIds,photoTex,photoUrls]);
