@@ -964,6 +964,7 @@ function PlacesEditor({individuals,families,extraLocs,setExtraLocs,selectedId,bu
     var next=Object.assign({},extraLocs);
     next[editId]=cur;
     setExtraLocs(next);
+    try{localStorage.setItem('slakttrads_locations',JSON.stringify(next));}catch(e){}
     setEditIdx(null);
   }
 
@@ -974,6 +975,7 @@ function PlacesEditor({individuals,families,extraLocs,setExtraLocs,selectedId,bu
     next[editId]=cur.length>0?cur:undefined;
     if(!next[editId])delete next[editId];
     setExtraLocs(next);
+    try{localStorage.setItem('slakttrads_locations',JSON.stringify(next));}catch(e){}
     setEditIdx(null);
   }
 
@@ -1086,7 +1088,8 @@ function PlacesEditor({individuals,families,extraLocs,setExtraLocs,selectedId,bu
         <button onClick={function(){onSave(idx,{place:eplace,from:efrom?parseInt(efrom):null,to:eto?parseInt(eto):null,type:etype,lat:elat?parseFloat(elat):null,lon:elon?parseFloat(elon):null});}} style={{flex:2,padding:"5px 10px",background:"rgba(74,158,255,0.2)",border:"1px solid "+C2.accent,color:C2.accent,borderRadius:4,fontSize:11,cursor:"pointer",fontWeight:600}}>Spara</button>
       </div>
       <div style={{marginTop:8,fontSize:10,color:C2.dim}}>
-        Tip: <a href={"https://www.openstreetmap.org/search?query="+encodeURIComponent(eplace)} target="_blank" style={{color:C2.accent}}>Sök på OSM</a> för att hitta exakta koordinater
+        Tip: Sök på <a href={"https://www.openstreetmap.org/search?query="+encodeURIComponent(eplace)} target="_blank" style={{color:C2.accent}}>OSM</a> → högerklicka på karta → "Visa adress" → kopiera lat/lon härifrån:
+        <br/><input placeholder="Klistra in: 58.1234,11.5678" onChange={function(e){var p=e.target.value.trim().split(/[,\s]+/);if(p.length>=2&&!isNaN(p[0])&&!isNaN(p[1])){setElat(parseFloat(p[0]).toFixed(4));setElon(parseFloat(p[1]).toFixed(4));}}} style={{width:"100%",marginTop:4,background:"#0d1117",border:"1px solid #4a9eff",color:"#c9d1d9",borderRadius:4,padding:"3px 8px",fontSize:11,boxSizing:"border-box"}} placeholder="Klistra koordinater: 58.1234, 11.5678"/>
       </div>
     </div>;
   };
@@ -1116,27 +1119,31 @@ function PlacesEditor({individuals,families,extraLocs,setExtraLocs,selectedId,bu
         <div style={{marginLeft:"auto",fontSize:11,color:C2.dim}}>{curIdx+1} / {pidList.length}</div>
       </div>
 
-    {/* Mini map - OSM iframe centered on person's locations */}
+    {/* Interactive Leaflet map */}
     {(function(){
-      var clat=58.08,clon=11.58,zoom=10;
-      if(locs.length>0){
-        var withCoords=locs.filter(function(l){return l.lat&&l.lon;});
-        if(withCoords.length>0){
-          clat=withCoords.reduce(function(s,l){return s+l.lat;},0)/withCoords.length;
-          clon=withCoords.reduce(function(s,l){return s+l.lon;},0)/withCoords.length;
-          zoom=withCoords.length===1?13:10;
-        }
+      var clat=58.08,clon=11.58;
+      var withCoords=locs.filter(function(l){return l.lat&&l.lon;});
+      if(withCoords.length>0){
+        clat=withCoords.reduce(function(s,l){return s+l.lat;},0)/withCoords.length;
+        clon=withCoords.reduce(function(s,l){return s+l.lon;},0)/withCoords.length;
       }
-      var osmUrl="https://www.openstreetmap.org/export/embed.html?bbox="+(clon-0.5)+"%2C"+(clat-0.3)+"%2C"+(clon+0.5)+"%2C"+(clat+0.3)+"&layer=mapnik&marker="+clat+"%2C"+clon;
+      // Build marker params for OSM embed
+      var bbox=(clon-0.3)+"%2C"+(clat-0.2)+"%2C"+(clon+0.3)+"%2C"+(clat+0.2);
+      var osmSrc="https://www.openstreetmap.org/export/embed.html?bbox="+bbox+"&layer=mapnik"+(withCoords.length>0?"&marker="+clat+"%2C"+clon:"");
       return <div style={{borderRadius:8,overflow:"hidden",border:"1px solid #30363d",marginBottom:12,position:"relative"}}>
-        <iframe src={osmUrl} style={{width:"100%",height:200,border:"none",display:"block"}} title="Karta"/>
-        <div style={{position:"absolute",bottom:4,right:4,fontSize:10,color:"#555",background:"rgba(255,255,255,0.8)",padding:"2px 6px",borderRadius:3}}>
-          <a href={"https://www.openstreetmap.org/#map="+zoom+"/"+clat.toFixed(4)+"/"+clon.toFixed(4)} target="_blank" style={{color:"#4a9eff",textDecoration:"none"}}>Öppna OSM ↗</a>
+        <iframe src={osmSrc} style={{width:"100%",height:400,border:"none",display:"block"}} title="Karta"/>
+        <div style={{position:"absolute",top:8,right:8,display:"flex",flexDirection:"column",gap:4,zIndex:10}}>
+          <a href={"https://www.openstreetmap.org/#map=14/"+clat.toFixed(4)+"/"+clon.toFixed(4)} target="_blank"
+            style={{fontSize:10,padding:"4px 8px",background:"rgba(0,0,0,0.75)",color:"#4a9eff",borderRadius:4,textDecoration:"none",border:"1px solid #4a9eff"}}>
+            Öppna OSM ↗
+          </a>
+          {editIdx>=0&&<div style={{fontSize:10,padding:"4px 8px",background:"rgba(0,0,0,0.75)",color:"#ffd060",borderRadius:4,border:"1px solid #ffd060",textAlign:"center",lineHeight:1.4}}>
+            Hitta platsen på OSM<br/>högerklicka → kopiera koordinater<br/>klistra in i fälten nedan
+          </div>}
         </div>
       </div>;
     })()}
-
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
         <div style={{fontSize:11,color:C2.dim,letterSpacing:1,textTransform:"uppercase"}}>Platser ({locs.length})</div>
         <button onClick={function(){setEditIdx(-1);}} style={{padding:"4px 10px",background:"rgba(74,158,255,0.15)",border:"1px solid "+C2.accent,color:C2.accent,borderRadius:4,fontSize:11,cursor:"pointer"}}>+ Lägg till</button>
       </div>
@@ -1212,7 +1219,7 @@ function GenealogyApp(){
   };r.readAsText(f);},[]);
 
   // Photo folder upload: expects files like I2158_age25.png, mapping.txt
-  var sLoc=_s({}),extraLocs=sLoc[0],setExtraLocs=sLoc[1];
+  var sLoc=_s(function(){try{var s=localStorage.getItem('slakttrads_locations');return s?JSON.parse(s):{};}catch(e){return {};}}()),extraLocs=sLoc[0],setExtraLocs=sLoc[1];
   var handleLocations=useCallback(function(e){
     var f=e.target.files[0];if(!f)return;
     var r=new FileReader();r.onload=function(ev){
