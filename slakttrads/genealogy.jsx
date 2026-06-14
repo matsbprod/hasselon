@@ -1,5 +1,5 @@
 const { useState, useRef, useEffect, useCallback, useMemo } = React;
-// THREE from CDN
+// THREE loaded via CDN
 
 /* ═══ GEDCOM PARSER ═══════════════════════════════════════════ */
 function cleanText(s){if(!s)return"";return s.replace(/\r/g,"").replace(/\xe8O/g,"Ö").replace(/\xe8o/g,"ö").replace(/\xe8A/g,"Ä").replace(/\xe8a/g,"ä").replace(/\xea/g,"å").replace(/\xeaA/g,"Å").replace(/\xe8U/g,"Ü").replace(/\xe8u/g,"ü").trim();}
@@ -643,12 +643,13 @@ function MapView(props) {
     topo:{name:"Topo",url:function(z,x,y){var s=["a","b","c"][(x+y)%3];return"https://"+s+".tile.opentopomap.org/"+z+"/"+x+"/"+y+".png";},attr:"\u00A9 OpenTopoMap"},
     cycle:{name:"Terrain",url:function(z,x,y){return"https://tile.thunderforest.com/landscape/"+z+"/"+x+"/"+y+".png?apikey=6170aad10dfd42a38d4d8c709a536f38";},attr:"\u00A9 Thunderforest"},
     ekon:{name:"Ekonomiska 1935-78",noCors:true,url:function(z,x,y){
-      var R=20037508.342789244,n=Math.pow(2,z),sz=2*R/n;
-      var x0=-R+x*sz,y1=R-y*sz;
-      var bbox=x0+","+(y1-sz)+","+(x0+sz)+","+y1;
-      var base="https://ext-geodata-raster.lansstyrelsen.se/arcgis/services/RasterNationellt/lst_ext_ekonomiska_kartan/ImageServer/WMSServer";
-      return base+"?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=0&STYLES=default&CRS=EPSG:3857&BBOX="+bbox+"&WIDTH=256&HEIGHT=256&FORMAT=image/jpeg";
-    },attr:"\u00A9 LST / Lantm\u00e4teriet"},
+      var iy=(Math.pow(2,z)-1)-y;
+      return "https://mapproxy.openstreetmap.se/tms/1.0.0/ek_EPSG3857/"+z+"/"+x+"/"+iy+".png";
+    },attr:"\u00A9 Lantm\u00e4teriet / OSM.se"},
+    harad:{name:"H\u00e4radskartan 1859-1934",noCors:true,url:function(z,x,y){
+      var iy=(Math.pow(2,z)-1)-y;
+      return "https://mapproxy.openstreetmap.se/tms/1.0.0/hk_EPSG3857/"+z+"/"+x+"/"+iy+".png";
+    },attr:"\u00A9 Lantm\u00e4teriet / OSM.se"},
   };
 
   // Slippy map math (Web Mercator)
@@ -1157,3 +1158,6 @@ function GenealogyApp(){
 }
 
 function AvPrev(props){var ref=useRef(null);useEffect(function(){if(!ref.current)return;var m=PM[props.pid];if(!m)return;var cv=genAvatar(m);var ctx=ref.current.getContext("2d");ref.current.width=36;ref.current.height=36;ctx.drawImage(cv,0,0,128,128,0,0,36,36);},[props.pid]);return <canvas ref={ref} width={36} height={36} style={{width:36,height:36,borderRadius:8,border:"2px solid "+(props.sex==="M"?"#4a9eff":"#ff6b9d"),background:"#080c14"}}/>;}
+
+
+const _root=ReactDOM.createRoot(document.getElementById('root'));_root.render(React.createElement(GenealogyApp));
