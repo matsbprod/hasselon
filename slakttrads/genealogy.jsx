@@ -699,7 +699,7 @@ function MapView(props) {
   var tileCache=useRef({});
   var layerRef=useRef("osm");
   var tileErrRef=useRef({ok:0,err:0});
-  var individuals=props.individuals,year=props.year,selId=props.selectedId,onSelect=props.onSelect;
+  var individuals=props.individuals,year=props.year,selId=props.selectedId,onSelect=props.onSelect,extraLocs=props.extraLocs||{},buildPersonLocations=props.buildPersonLocations;
   var s13=useState("osm"),mapLayer=s13[0],setMapLayer=s13[1];
 
   // Tile sources
@@ -1028,117 +1028,57 @@ function PlacesLeafletMap({locs,editIdx,onCoords}){
 }
 
 // ═══ PLACES EDITOR ═══════════════════════════════════════
+
 /* ═══ PHOTO MANAGER ════════════════════════════════════════════ */
 var PHOTO_TYPES=[
-  {id:"portrait",label:"Porträtt",icon:"🧑",color:"#4a9eff"},
-  {id:"wedding",label:"Bröllop",icon:"💍",color:"#ff6b9d"},
-  {id:"place",label:"Plats/Hus",icon:"🏠",color:"#66d9a0"},
-  {id:"group",label:"Grupphoto",icon:"👨‍👩‍👧",color:"#ffa94d"},
-  {id:"document",label:"Dokument",icon:"📄",color:"#9775fa"},
-  {id:"other",label:"Övrigt",icon:"📷",color:"#8899aa"},
+  {id:"portrait",label:"Portr\u00e4tt",icon:"\uD83E\uDDD1",color:"#4a9eff"},
+  {id:"wedding",label:"Br\u00f6llop",icon:"\uD83D\uDC8D",color:"#ff6b9d"},
+  {id:"place",label:"Plats/Hus",icon:"\uD83C\uDFE0",color:"#66d9a0"},
+  {id:"group",label:"Grupphoto",icon:"\uD83D\uDC68\u200D\uD83D\uDC69\u200D\uD83D\uDC67",color:"#ffa94d"},
+  {id:"document",label:"Dokument",icon:"\uD83D\uDCC4",color:"#9775fa"},
+  {id:"other",label:"\u00D6vrigt",icon:"\uD83D\uDCF7",color:"#8899aa"},
 ];
 
-function PhotoManager({individuals,photoUrls,setPhotoUrls,setPhotoTex,selectedId,hasParsedData}){
-  const {useState,useRef,useEffect,useCallback}=React;
+function PhotoManager(props){
+  var individuals=props.individuals,photoUrls=props.photoUrls,setPhotoUrls=props.setPhotoUrls,setPhotoTex=props.setPhotoTex,selectedId=props.selectedId,hasParsedData=props.hasParsedData;
   var _s=useState;
   var s1=_s(selectedId||null),editId=s1[0],setEditId=s1[1];
   var s2=_s(""),search=s2[0],setSearch=s2[1];
-  var s3=_s(null),lightbox=s3[0],setLightbox=s3[1]; // {photos, idx}
+  var s3=_s(null),lightbox=s3[0],setLightbox=s3[1];
   var s4=_s(false),dragging=s4[0],setDragging=s4[1];
   var s5=_s(false),uploading=s5[0],setUploading=s5[1];
   var s6=_s(null),uploadErr=s6[0],setUploadErr=s6[1];
-  var s7=_s(null),editPhoto=s7[0],setEditPhoto=s7[1]; // {idx, label, type, year}
+  var s7=_s(null),editPhoto=s7[0],setEditPhoto=s7[1];
   var s8=_s(false),showGHConfig=s8[0],setShowGHConfig=s8[1];
-  var ghCfg=_s(function(){try{var r=localStorage.getItem('slakttrads_gh');return r?JSON.parse(r):{token:"",repo:"",branch:"main"};}catch(e){return{token:"",repo:"",branch:"main"};}}());
-  var ghConfig=ghCfg[0],setGhConfig=ghCfg[1];
-  var s9=_s(ghConfig.token&&ghConfig.repo),ghReady=s9[0],setGhReady=s9[1];
-  var dropRef=useRef(null);
+  var ghInit=function(){try{var r=localStorage.getItem('slakttrads_gh');return r?JSON.parse(r):{token:"",repo:"",branch:"main"};}catch(e){return{token:"",repo:"",branch:"main"};}};
+  var s9=_s(ghInit()),ghConfig=s9[0],setGhConfig=s9[1];
+  var ghReady=!!(ghConfig.token&&ghConfig.repo);
 
-  // Sync selectedId
   useEffect(function(){if(selectedId)setEditId(selectedId);},[selectedId]);
 
-  if(!hasParsedData) return(
-    <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",color:"#8899aa",fontSize:13,gap:12,height:"100%",background:"#0d1117"}}>
-      <div style={{fontSize:40}}>📷</div>
-      <div style={{fontWeight:600,color:"#c9d1d9"}}>Fotogalleriet</div>
-      <div style={{fontSize:12,textAlign:"center",maxWidth:280,lineHeight:1.7}}>Ladda en GEDCOM-fil först, sedan kan du lägga till foton för varje person.</div>
-    </div>
+  if(!hasParsedData) return React.createElement('div',{style:{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",color:"#8899aa",fontSize:13,gap:12,height:"100%",background:"#0d1117"}},
+    React.createElement('div',{style:{fontSize:40}},"\uD83D\uDCF7"),
+    React.createElement('div',{style:{fontWeight:600,color:"#c9d1d9"}},"Fotogalleriet"),
+    React.createElement('div',{style:{fontSize:12,textAlign:"center",maxWidth:280,lineHeight:1.7}},"Ladda en GEDCOM-fil f\u00f6rst, sedan kan du l\u00e4gga till foton f\u00f6r varje person.")
   );
 
   var pids=individuals?Object.keys(individuals):[];
-  var pidList=pids.filter(function(p){return individuals[p]&&individuals[p].name;}).sort(function(a,b){return(individuals[a].name||"").localeCompare(individuals[b].name||"");});
+  var pidList=pids.filter(function(p){return individuals[p]&&individuals[p].name;}).sort(function(a,b){return(individuals[a].name||"").localeCompare(individuals[b].name||"","sv");});
   var filteredPids=search.trim()?pidList.filter(function(p){return individuals[p].name.toLowerCase().indexOf(search.toLowerCase())>=0;}):pidList;
   var ind=editId&&individuals?individuals[editId]:null;
   var photos=editId&&photoUrls[editId]?photoUrls[editId]:[];
+  var C2={bg:"#0d1117",panel:"#161b22",border:"#30363d",text:"#c9d1d9",dim:"#8b949e",accent:"#4a9eff"};
 
-  // Save gh config
   function saveGhConfig(cfg){
     setGhConfig(cfg);
-    setGhReady(!!(cfg.token&&cfg.repo));
     try{localStorage.setItem('slakttrads_gh',JSON.stringify(cfg));}catch(e){}
   }
 
-  // Upload file to GitHub
-  async function uploadToGitHub(file, personId){
-    var cfg=ghConfig;
-    if(!cfg.token||!cfg.repo) return null;
-    var ext=file.name.split(".").pop().toLowerCase()||"jpg";
-    var ts=Date.now();
-    var safeName=personId.replace(/[@]/g,"").replace(/[^a-zA-Z0-9]/g,"_");
-    var path="photos/"+safeName+"/"+ts+"."+ext;
-    var b64=await new Promise(function(res,rej){
-      var r=new FileReader();
-      r.onload=function(ev){res(ev.target.result.split(",")[1]);};
-      r.onerror=rej;
-      r.readAsDataURL(file);
-    });
-    // Check if file exists (get SHA)
-    var sha=null;
-    try{
-      var chk=await fetch("https://api.github.com/repos/"+cfg.repo+"/contents/"+path,{
-        headers:{"Authorization":"token "+cfg.token,"Accept":"application/vnd.github.v3+json"}
-      });
-      if(chk.ok){var cd=await chk.json();sha=cd.sha;}
-    }catch(e){}
-    var body={message:"Add photo for "+personId,content:b64,branch:cfg.branch||"main"};
-    if(sha)body.sha=sha;
-    var resp=await fetch("https://api.github.com/repos/"+cfg.repo+"/contents/"+path,{
-      method:"PUT",headers:{"Authorization":"token "+cfg.token,"Accept":"application/vnd.github.v3+json","Content-Type":"application/json"},
-      body:JSON.stringify(body)
-    });
-    if(!resp.ok){var e=await resp.json();throw new Error(e.message||resp.status);}
-    var data=await resp.json();
-    // Return raw URL
-    return data.content.download_url||("https://raw.githubusercontent.com/"+cfg.repo+"/"+(cfg.branch||"main")+"/"+path);
-  }
-
-  // Delete file from GitHub
-  async function deleteFromGitHub(url){
-    var cfg=ghConfig;
-    if(!cfg.token||!cfg.repo||!url) return;
-    // Extract path from raw URL
-    var m=url.match(/raw\.githubusercontent\.com\/[^/]+\/[^/]+\/[^/]+\/(.+)/);
-    if(!m) return;
-    var path=m[1];
-    try{
-      var chk=await fetch("https://api.github.com/repos/"+cfg.repo+"/contents/"+path,{
-        headers:{"Authorization":"token "+cfg.token,"Accept":"application/vnd.github.v3+json"}
-      });
-      if(!chk.ok) return;
-      var cd=await chk.json();
-      await fetch("https://api.github.com/repos/"+cfg.repo+"/contents/"+path,{
-        method:"DELETE",headers:{"Authorization":"token "+cfg.token,"Accept":"application/vnd.github.v3+json","Content-Type":"application/json"},
-        body:JSON.stringify({message:"Delete photo for "+editId,sha:cd.sha,branch:cfg.branch||"main"})
-      });
-    }catch(e){console.warn("GitHub delete failed:",e);}
-  }
-
-  // Save updated photoUrls to localStorage
   function savePhotos(next){
     setPhotoUrls(next);
     try{localStorage.setItem('slakttrads_photos',JSON.stringify(next));}catch(e){}
-    // Update 3D texture for first portrait
-    var first=next[editId]&&next[editId].find(function(p){return p.type==="portrait"||!p.type;})||next[editId]&&next[editId][0];
+    var arr=next[editId]||[];
+    var first=arr.find(function(p){return p.type==="portrait";})||arr[0];
     if(first&&first.url){
       var img=new Image();img.crossOrigin="anonymous";
       img.onload=function(){
@@ -1154,44 +1094,101 @@ function PhotoManager({individuals,photoUrls,setPhotoUrls,setPhotoTex,selectedId
     }
   }
 
-  // Process dropped/selected files
-  async function processFiles(files){
-    if(!files||!files.length) return;
-    if(!ghReady){setUploadErr("Konfigurera GitHub-token och repo först (⚙️ ovan).");return;}
-    setUploading(true);setUploadErr(null);
-    var errors=[];
-    for(var i=0;i<files.length;i++){
-      var file=files[i];
-      if(!file.type.match(/image\//))continue;
-      try{
-        var url=await uploadToGitHub(file,editId);
-        if(url){
-          var label=file.name.replace(/\.[^.]+$/,"").replace(/[_-]/g," ");
-          var ph={url:url,label:label,type:"portrait",year:"",source:""};
-          var next=Object.assign({},photoUrls);
-          if(!next[editId])next[editId]=[];
-          next[editId]=next[editId].concat([ph]);
-          savePhotos(next);
-        }
-      }catch(e){errors.push(file.name+": "+e.message);}
-    }
-    setUploading(false);
-    if(errors.length)setUploadErr("Fel: "+errors.join("; "));
+  function readFileAsBase64(file){
+    return new Promise(function(resolve,reject){
+      var r=new FileReader();
+      r.onload=function(ev){resolve(ev.target.result.split(",")[1]);};
+      r.onerror=reject;
+      r.readAsDataURL(file);
+    });
   }
 
-  // Delete photo
-  async function deletePhoto(idx){
+  function uploadToGitHub(file,personId){
+    var cfg=ghConfig;
+    if(!cfg.token||!cfg.repo) return Promise.resolve(null);
+    var ext=(file.name.split(".").pop()||"jpg").toLowerCase();
+    var ts=Date.now();
+    var safeName=personId.replace(/@/g,"").replace(/[^a-zA-Z0-9]/g,"_");
+    var path="photos/"+safeName+"/"+ts+"."+ext;
+    var apiBase="https://api.github.com/repos/"+cfg.repo+"/contents/"+path;
+    var headers={"Authorization":"token "+cfg.token,"Accept":"application/vnd.github.v3+json","Content-Type":"application/json"};
+    return readFileAsBase64(file).then(function(b64){
+      return fetch(apiBase,{headers:headers})
+        .then(function(r){return r.ok?r.json():null;})
+        .catch(function(){return null;})
+        .then(function(existing){
+          var body={message:"Add photo for "+personId,content:b64,branch:cfg.branch||"main"};
+          if(existing&&existing.sha) body.sha=existing.sha;
+          return fetch(apiBase,{method:"PUT",headers:headers,body:JSON.stringify(body)});
+        })
+        .then(function(resp){
+          if(!resp.ok) return resp.json().then(function(e){throw new Error(e.message||resp.status);});
+          return resp.json();
+        })
+        .then(function(data){
+          return data.content&&data.content.download_url
+            ? data.content.download_url
+            : "https://raw.githubusercontent.com/"+cfg.repo+"/"+(cfg.branch||"main")+"/"+path;
+        });
+    });
+  }
+
+  function deleteFromGitHub(url){
+    var cfg=ghConfig;
+    if(!cfg.token||!cfg.repo||!url) return;
+    var m=url.match(/raw\.githubusercontent\.com\/[^/]+\/[^/]+\/[^/]+\/(.+)/);
+    if(!m) return;
+    var path=m[1];
+    var apiBase="https://api.github.com/repos/"+cfg.repo+"/contents/"+path;
+    var headers={"Authorization":"token "+cfg.token,"Accept":"application/vnd.github.v3+json","Content-Type":"application/json"};
+    fetch(apiBase,{headers:headers})
+      .then(function(r){return r.ok?r.json():null;})
+      .then(function(cd){
+        if(!cd||!cd.sha) return;
+        return fetch(apiBase,{method:"DELETE",headers:headers,body:JSON.stringify({message:"Delete photo",sha:cd.sha,branch:cfg.branch||"main"})});
+      })
+      .catch(function(e){console.warn("GitHub delete failed:",e);});
+  }
+
+  function processFiles(files){
+    if(!files||!files.length) return;
+    if(!ghReady){setUploadErr("Konfigurera GitHub-token och repo f\u00f6rst (\u2699\uFE0F ovan).");return;}
+    setUploading(true);setUploadErr(null);
+    var arr=Array.from(files).filter(function(f){return f.type.match(/image\//);});
+    var idx=0;
+    var errors=[];
+    function next(){
+      if(idx>=arr.length){setUploading(false);if(errors.length)setUploadErr("Fel: "+errors.join("; "));return;}
+      var file=arr[idx++];
+      uploadToGitHub(file,editId)
+        .then(function(url){
+          if(url){
+            var label=file.name.replace(/\.[^.]+$/,"").replace(/[_-]/g," ");
+            setPhotoUrls(function(prev){
+              var next2=Object.assign({},prev);
+              if(!next2[editId])next2[editId]=[];
+              next2[editId]=next2[editId].concat([{url:url,label:label,type:"portrait",year:"",source:""}]);
+              try{localStorage.setItem('slakttrads_photos',JSON.stringify(next2));}catch(e){}
+              return next2;
+            });
+          }
+        })
+        .catch(function(e){errors.push(file.name+": "+e.message);})
+        .then(next);
+    }
+    next();
+  }
+
+  function deletePhoto(idx){
     if(!window.confirm("Ta bort bilden?")) return;
     var ph=photos[idx];
     var next=Object.assign({},photoUrls);
     next[editId]=photos.filter(function(_,i){return i!==idx;});
     if(!next[editId].length)delete next[editId];
     savePhotos(next);
-    // Delete from GitHub in background
-    if(ph&&ph.url&&ph.url.includes("raw.githubusercontent"))deleteFromGitHub(ph.url);
+    if(ph&&ph.url&&ph.url.indexOf("raw.githubusercontent")>=0)deleteFromGitHub(ph.url);
   }
 
-  // Update photo metadata
   function savePhotoMeta(idx,patch){
     var next=Object.assign({},photoUrls);
     next[editId]=photos.map(function(p,i){return i===idx?Object.assign({},p,patch):p;});
@@ -1199,216 +1196,156 @@ function PhotoManager({individuals,photoUrls,setPhotoUrls,setPhotoTex,selectedId
     setEditPhoto(null);
   }
 
-  // Drag and drop handlers
-  function onDragOver(e){e.preventDefault();setDragging(true);}
-  function onDragLeave(){setDragging(false);}
-  function onDrop(e){e.preventDefault();setDragging(false);processFiles(Array.from(e.dataTransfer.files));}
+  var personList=filteredPids.map(function(pid){
+    var p=individuals[pid];
+    var phCount=(photoUrls[pid]||[]).length;
+    return React.createElement('div',{key:pid,onClick:function(){setEditId(pid);setSearch("");},
+      style:{padding:"7px 10px",cursor:"pointer",borderBottom:"1px solid "+C2.border+"44",background:editId===pid?"rgba(74,158,255,0.12)":"transparent",display:"flex",alignItems:"center",gap:7}},
+      photoUrls[pid]&&photoUrls[pid][0]
+        ?React.createElement('img',{src:photoUrls[pid][0].url,style:{width:28,height:28,borderRadius:4,objectFit:"cover",flexShrink:0,border:"1px solid "+C2.border}})
+        :React.createElement('div',{style:{width:28,height:28,borderRadius:4,background:"rgba(255,255,255,0.05)",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,color:C2.dim}},p.sex==="F"?"\u2640":"\u2642"),
+      React.createElement('div',{style:{flex:1,minWidth:0}},
+        React.createElement('div',{style:{fontSize:11,fontWeight:editId===pid?600:400,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:editId===pid?C2.accent:C2.text}},p.name),
+        phCount>0&&React.createElement('div',{style:{fontSize:9,color:"#66d9a0"}},phCount+" foto"+(phCount!==1?"n":""))
+      )
+    );
+  });
 
-  var C2={bg:"#0d1117",panel:"#161b22",border:"#30363d",text:"#c9d1d9",dim:"#8b949e",accent:"#4a9eff"};
+  var photoGrid=photos.map(function(ph,idx){
+    var pt=PHOTO_TYPES.find(function(t){return t.id===ph.type;})||PHOTO_TYPES[PHOTO_TYPES.length-1];
+    return React.createElement('div',{key:idx,style:{background:C2.panel,borderRadius:8,border:"1px solid "+C2.border,overflow:"hidden",position:"relative",cursor:"pointer"},
+      onClick:function(){setLightbox({photos:photos,idx:idx});}},
+      React.createElement('img',{src:ph.url,style:{width:"100%",aspectRatio:"1",objectFit:"cover",display:"block"},onError:function(e){e.target.style.display="none";}}),
+      React.createElement('div',{style:{padding:"5px 7px"}},
+        React.createElement('div',{style:{fontSize:9,color:pt.color,fontWeight:600,marginBottom:1}},pt.icon+" "+pt.label),
+        React.createElement('div',{style:{fontSize:10,color:C2.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},ph.label||"\u2014"),
+        ph.year&&React.createElement('div',{style:{fontSize:9,color:C2.dim}},ph.year)
+      ),
+      React.createElement('div',{style:{position:"absolute",top:4,right:4,display:"flex",gap:3}},
+        React.createElement('button',{onClick:function(e){e.stopPropagation();setEditPhoto({idx:idx,label:ph.label||"",type:ph.type||"portrait",year:ph.year||"",source:ph.source||""});},
+          style:{width:22,height:22,borderRadius:4,background:"rgba(0,0,0,0.75)",border:"none",color:"#fff",fontSize:11,cursor:"pointer"}},"\u270F\uFE0F"),
+        React.createElement('button',{onClick:function(e){e.stopPropagation();deletePhoto(idx);},
+          style:{width:22,height:22,borderRadius:4,background:"rgba(180,0,0,0.75)",border:"none",color:"#fff",fontSize:11,cursor:"pointer"}},"\u2715")
+      )
+    );
+  });
 
-  return(
-    <div style={{flex:1,display:"flex",height:"100%",overflow:"hidden",background:C2.bg,color:C2.text,fontFamily:"'Segoe UI',sans-serif"}}>
-
-      {/* LEFT: person list */}
-      <div style={{width:200,flexShrink:0,borderRight:"1px solid "+C2.border,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-        <div style={{padding:"8px 10px",borderBottom:"1px solid "+C2.border,flexShrink:0}}>
-          <input type="text" placeholder="🔍 Sök person..." value={search} onChange={function(e){setSearch(e.target.value);}}
-            style={{width:"100%",background:"rgba(255,255,255,0.05)",border:"1px solid "+C2.border,borderRadius:6,padding:"5px 8px",color:C2.text,fontSize:11,outline:"none",boxSizing:"border-box"}}/>
-        </div>
-        <div style={{flex:1,overflowY:"auto"}}>
-          {filteredPids.map(function(pid){
-            var p=individuals[pid];
-            var phCount=(photoUrls[pid]||[]).length;
-            return(
-              <div key={pid} onClick={function(){setEditId(pid);setSearch("");}}
-                style={{padding:"7px 10px",cursor:"pointer",borderBottom:"1px solid "+C2.border+"44",background:editId===pid?"rgba(74,158,255,0.12)":"transparent",display:"flex",alignItems:"center",gap:7}}>
-                {photoUrls[pid]&&photoUrls[pid][0]?
-                  <img src={photoUrls[pid][0].url} style={{width:28,height:28,borderRadius:4,objectFit:"cover",flexShrink:0,border:"1px solid "+C2.border}}/>:
-                  <div style={{width:28,height:28,borderRadius:4,background:"rgba(255,255,255,0.05)",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,color:C2.dim}}>{p.sex==="F"?"♀":"♂"}</div>
-                }
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:11,fontWeight:editId===pid?600:400,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:editId===pid?C2.accent:C2.text}}>{p.name}</div>
-                  {phCount>0&&<div style={{fontSize:9,color:"#66d9a0"}}>{phCount} foto{phCount!==1?"n":""}</div>}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* RIGHT: gallery + upload */}
-      <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-
-        {/* Header */}
-        <div style={{padding:"8px 12px",borderBottom:"1px solid "+C2.border,flexShrink:0,display:"flex",alignItems:"center",gap:8}}>
-          {ind&&<div style={{flex:1}}>
-            <div style={{fontSize:13,fontWeight:600}}>{ind.name}</div>
-            <div style={{fontSize:10,color:C2.dim}}>{ind.birthDate?ind.birthDate+" · ":""}{photos.length} foto{photos.length!==1?"n":""}</div>
-          </div>}
-          {!ind&&<div style={{flex:1,fontSize:12,color:C2.dim}}>Välj en person till vänster</div>}
-          <button onClick={function(){setShowGHConfig(!showGHConfig);}} title="GitHub-inställningar"
-            style={{padding:"4px 8px",background:ghReady?"rgba(102,217,160,0.15)":"rgba(255,165,0,0.15)",border:"1px solid "+(ghReady?"#66d9a0":"#ffa94d"),borderRadius:6,color:ghReady?"#66d9a0":"#ffa94d",cursor:"pointer",fontSize:11,fontWeight:600}}>
-            ⚙️ GitHub{ghReady?" ✓":""}
-          </button>
-        </div>
-
-        {/* GitHub config panel */}
-        {showGHConfig&&(
-          <div style={{padding:"10px 12px",borderBottom:"1px solid "+C2.border,background:"rgba(74,158,255,0.06)",flexShrink:0}}>
-            <div style={{fontSize:10,fontWeight:700,letterSpacing:1,color:C2.dim,textTransform:"uppercase",marginBottom:6}}>GitHub-konfiguration</div>
-            {[["token","Token (ghp_...)","password"],["repo","Repo (user/repo)","text"],["branch","Branch","text"]].map(function(f){
-              return(
-                <div key={f[0]} style={{display:"flex",alignItems:"center",gap:6,marginBottom:5}}>
-                  <label style={{fontSize:10,color:C2.dim,width:52,flexShrink:0}}>{f[1].split(" ")[0]}</label>
-                  <input type={f[2]} placeholder={f[1]} value={ghConfig[f[0]]||""}
-                    onChange={function(key){return function(e){var n=Object.assign({},ghConfig);n[key]=e.target.value;saveGhConfig(n);};}(f[0])}
-                    style={{flex:1,background:"rgba(255,255,255,0.05)",border:"1px solid "+C2.border,borderRadius:5,padding:"4px 7px",color:C2.text,fontSize:11,outline:"none"}}/>
-                </div>
-              );
-            })}
-            <div style={{fontSize:9,color:C2.dim,marginTop:4}}>Token behöver <strong>repo</strong>-scope. Bilder sparas i <code>photos/</code> i ditt repo.</div>
-            {!ghReady&&<div style={{fontSize:10,color:"#ffa94d",marginTop:4}}>⚠️ Fyll i token + repo för att aktivera uppladdning.</div>}
-            {ghReady&&<div style={{fontSize:10,color:"#66d9a0",marginTop:4}}>✓ Redo att ladda upp till {ghConfig.repo}</div>}
-          </div>
-        )}
-
-        {/* Error message */}
-        {uploadErr&&(
-          <div style={{padding:"6px 12px",background:"rgba(255,80,80,0.15)",borderBottom:"1px solid rgba(255,80,80,0.3)",fontSize:11,color:"#ff6b6b",flexShrink:0}}>
-            {uploadErr}<button onClick={function(){setUploadErr(null);}} style={{background:"none",border:"none",color:"#ff6b6b",cursor:"pointer",marginLeft:8,fontSize:13}}>✕</button>
-          </div>
-        )}
-
-        {ind&&(
-          <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-
-            {/* Drop zone */}
-            <div ref={dropRef} onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}
-              style={{margin:"10px 12px 0",padding:uploading?"12px":"10px",border:"2px dashed "+(dragging?"#4a9eff":C2.border),borderRadius:8,textAlign:"center",
-                background:dragging?"rgba(74,158,255,0.08)":uploading?"rgba(102,217,160,0.06)":"rgba(255,255,255,0.02)",transition:"all 0.15s",flexShrink:0}}>
-              {uploading?(
-                <div style={{color:"#66d9a0",fontSize:11}}>⏳ Laddar upp till GitHub…</div>
-              ):(
-                <label style={{cursor:"pointer",display:"block"}}>
-                  <div style={{fontSize:20,marginBottom:4}}>{dragging?"📂":"📷"}</div>
-                  <div style={{fontSize:11,color:dragging?C2.accent:C2.dim}}>
-                    {dragging?"Släpp här!":"Dra & släpp bilder, eller klicka för att välja"}
-                  </div>
-                  <div style={{fontSize:9,color:C2.dim,marginTop:2}}>JPG, PNG, WEBP — sparas på GitHub</div>
-                  <input type="file" accept="image/*" multiple style={{display:"none"}}
-                    onChange={function(e){processFiles(Array.from(e.target.files));e.target.value="";}}/>
-                </label>
-              )}
-            </div>
-
-            {/* Photo grid */}
-            <div style={{flex:1,overflowY:"auto",padding:"10px 12px"}}>
-              {photos.length===0&&(
-                <div style={{textAlign:"center",color:C2.dim,fontSize:12,marginTop:20}}>Inga foton ännu — ladda upp via rutan ovan.</div>
-              )}
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))",gap:8}}>
-                {photos.map(function(ph,idx){
-                  var pt=PHOTO_TYPES.find(function(t){return t.id===ph.type;})||PHOTO_TYPES[PHOTO_TYPES.length-1];
-                  return(
-                    <div key={idx} style={{background:C2.panel,borderRadius:8,border:"1px solid "+C2.border,overflow:"hidden",position:"relative",cursor:"pointer"}}
-                      onClick={function(){setLightbox({photos:photos,idx:idx});}}>
-                      <img src={ph.url} style={{width:"100%",aspectRatio:"1",objectFit:"cover",display:"block"}}
-                        onError={function(e){e.target.style.display="none";}}/>
-                      <div style={{padding:"5px 7px"}}>
-                        <div style={{fontSize:9,color:pt.color,fontWeight:600,marginBottom:1}}>{pt.icon} {pt.label}</div>
-                        <div style={{fontSize:10,color:C2.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{ph.label||"—"}</div>
-                        {ph.year&&<div style={{fontSize:9,color:C2.dim}}>{ph.year}</div>}
-                      </div>
-                      {/* Action buttons */}
-                      <div style={{position:"absolute",top:4,right:4,display:"flex",gap:3}}>
-                        <button onClick={function(e,i){return function(ev){ev.stopPropagation();setEditPhoto({idx:i,label:photos[i].label||"",type:photos[i].type||"portrait",year:photos[i].year||"",source:photos[i].source||""});};}(null,idx)}
-                          style={{width:20,height:20,borderRadius:4,background:"rgba(0,0,0,0.7)",border:"none",color:"#fff",fontSize:10,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✏️</button>
-                        <button onClick={function(e,i){return function(ev){ev.stopPropagation();deletePhoto(i);};}(null,idx)}
-                          style={{width:20,height:20,borderRadius:4,background:"rgba(180,0,0,0.7)",border:"none",color:"#fff",fontSize:10,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Edit photo metadata modal */}
-      {editPhoto&&(
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}}
-          onClick={function(){setEditPhoto(null);}}>
-          <div style={{background:C2.panel,borderRadius:12,border:"1px solid "+C2.border,padding:20,minWidth:280,maxWidth:340}}
-            onClick={function(e){e.stopPropagation();}}>
-            <div style={{fontSize:13,fontWeight:600,marginBottom:12}}>Redigera fotoinformation</div>
-            {/* Preview */}
-            {photos[editPhoto.idx]&&<img src={photos[editPhoto.idx].url} style={{width:"100%",height:140,objectFit:"cover",borderRadius:6,marginBottom:10,border:"1px solid "+C2.border}}/>}
-            {/* Type */}
-            <div style={{marginBottom:8}}>
-              <div style={{fontSize:10,color:C2.dim,marginBottom:4}}>Typ</div>
-              <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
-                {PHOTO_TYPES.map(function(pt){
-                  return(
-                    <button key={pt.id} onClick={function(){setEditPhoto(function(ep){return Object.assign({},ep,{type:pt.id});});}}
-                      style={{padding:"3px 8px",borderRadius:5,border:"1px solid "+(editPhoto.type===pt.id?pt.color:C2.border),
-                        background:editPhoto.type===pt.id?"rgba(74,158,255,0.15)":"transparent",color:editPhoto.type===pt.id?pt.color:C2.dim,fontSize:10,cursor:"pointer"}}>
-                      {pt.icon} {pt.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-            {/* Label */}
-            <div style={{marginBottom:8}}>
-              <div style={{fontSize:10,color:C2.dim,marginBottom:3}}>Bildtext</div>
-              <input type="text" value={editPhoto.label} onChange={function(e){setEditPhoto(function(ep){return Object.assign({},ep,{label:e.target.value});});}}
-                placeholder="t.ex. Bröllopsdag 1923"
-                style={{width:"100%",boxSizing:"border-box",background:"rgba(255,255,255,0.05)",border:"1px solid "+C2.border,borderRadius:5,padding:"5px 8px",color:C2.text,fontSize:11,outline:"none"}}/>
-            </div>
-            {/* Year */}
-            <div style={{marginBottom:8}}>
-              <div style={{fontSize:10,color:C2.dim,marginBottom:3}}>År (ca)</div>
-              <input type="text" value={editPhoto.year} onChange={function(e){setEditPhoto(function(ep){return Object.assign({},ep,{year:e.target.value});});}}
-                placeholder="t.ex. 1923"
-                style={{width:"100%",boxSizing:"border-box",background:"rgba(255,255,255,0.05)",border:"1px solid "+C2.border,borderRadius:5,padding:"5px 8px",color:C2.text,fontSize:11,outline:"none"}}/>
-            </div>
-            {/* Source */}
-            <div style={{marginBottom:14}}>
-              <div style={{fontSize:10,color:C2.dim,marginBottom:3}}>Källa</div>
-              <input type="text" value={editPhoto.source} onChange={function(e){setEditPhoto(function(ep){return Object.assign({},ep,{source:e.target.value});});}}
-                placeholder="t.ex. Familjearkiv, privatägd"
-                style={{width:"100%",boxSizing:"border-box",background:"rgba(255,255,255,0.05)",border:"1px solid "+C2.border,borderRadius:5,padding:"5px 8px",color:C2.text,fontSize:11,outline:"none"}}/>
-            </div>
-            <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
-              <button onClick={function(){setEditPhoto(null);}} style={{padding:"6px 14px",background:"transparent",border:"1px solid "+C2.border,borderRadius:6,color:C2.dim,cursor:"pointer",fontSize:11}}>Avbryt</button>
-              <button onClick={function(){savePhotoMeta(editPhoto.idx,{label:editPhoto.label,type:editPhoto.type,year:editPhoto.year,source:editPhoto.source});}}
-                style={{padding:"6px 14px",background:"#4a9eff",border:"none",borderRadius:6,color:"#fff",cursor:"pointer",fontSize:11,fontWeight:600}}>Spara</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Lightbox */}
-      {lightbox&&(
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.92)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",zIndex:2000}}
-          onClick={function(){setLightbox(null);}}>
-          <button onClick={function(){setLightbox(null);}} style={{position:"absolute",top:16,right:16,background:"rgba(255,255,255,0.1)",border:"none",color:"#fff",fontSize:20,width:36,height:36,borderRadius:8,cursor:"pointer"}}>✕</button>
-          {lightbox.idx>0&&<button onClick={function(e){e.stopPropagation();setLightbox(function(lb){return{photos:lb.photos,idx:lb.idx-1};});}}
-            style={{position:"absolute",left:16,top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.1)",border:"none",color:"#fff",fontSize:24,width:44,height:44,borderRadius:8,cursor:"pointer"}}>‹</button>}
-          {lightbox.idx<lightbox.photos.length-1&&<button onClick={function(e){e.stopPropagation();setLightbox(function(lb){return{photos:lb.photos,idx:lb.idx+1};});}}
-            style={{position:"absolute",right:16,top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.1)",border:"none",color:"#fff",fontSize:24,width:44,height:44,borderRadius:8,cursor:"pointer"}}>›</button>}
-          <img src={lightbox.photos[lightbox.idx].url} style={{maxWidth:"90vw",maxHeight:"75vh",objectFit:"contain",borderRadius:8,border:"1px solid #333"}}
-            onClick={function(e){e.stopPropagation();}}/>
-          <div style={{marginTop:12,textAlign:"center"}} onClick={function(e){e.stopPropagation();}}>
-            <div style={{color:"#fff",fontSize:13,fontWeight:600}}>{lightbox.photos[lightbox.idx].label||"Foto "+(lightbox.idx+1)}</div>
-            {lightbox.photos[lightbox.idx].year&&<div style={{color:"#8899aa",fontSize:11,marginTop:2}}>{lightbox.photos[lightbox.idx].year}</div>}
-            {lightbox.photos[lightbox.idx].source&&<div style={{color:"#8899aa",fontSize:10,marginTop:1}}>Källa: {lightbox.photos[lightbox.idx].source}</div>}
-            <div style={{color:"#666",fontSize:10,marginTop:4}}>{lightbox.idx+1} / {lightbox.photos.length}</div>
-          </div>
-        </div>
-      )}
-    </div>
+  return React.createElement('div',{style:{flex:1,display:"flex",height:"100%",overflow:"hidden",background:C2.bg,color:C2.text,fontFamily:"'Segoe UI',sans-serif"}},
+    /* Person list */
+    React.createElement('div',{style:{width:200,flexShrink:0,borderRight:"1px solid "+C2.border,display:"flex",flexDirection:"column",overflow:"hidden"}},
+      React.createElement('div',{style:{padding:"8px 10px",borderBottom:"1px solid "+C2.border,flexShrink:0}},
+        React.createElement('input',{type:"text",placeholder:"\uD83D\uDD0D S\u00f6k person...",value:search,onChange:function(e){setSearch(e.target.value);},
+          style:{width:"100%",background:"rgba(255,255,255,0.05)",border:"1px solid "+C2.border,borderRadius:6,padding:"5px 8px",color:C2.text,fontSize:11,outline:"none",boxSizing:"border-box"}})
+      ),
+      React.createElement('div',{style:{flex:1,overflowY:"auto"}},personList)
+    ),
+    /* Main area */
+    React.createElement('div',{style:{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}},
+      /* Header */
+      React.createElement('div',{style:{padding:"8px 12px",borderBottom:"1px solid "+C2.border,flexShrink:0,display:"flex",alignItems:"center",gap:8}},
+        ind
+          ?React.createElement('div',{style:{flex:1}},
+            React.createElement('div',{style:{fontSize:13,fontWeight:600}},ind.name),
+            React.createElement('div',{style:{fontSize:10,color:C2.dim}},(ind.birthDate?ind.birthDate+" \u00b7 ":"")+photos.length+" foto"+(photos.length!==1?"n":""))
+          )
+          :React.createElement('div',{style:{flex:1,fontSize:12,color:C2.dim}},"V\u00e4lj en person till v\u00e4nster"),
+        React.createElement('button',{onClick:function(){setShowGHConfig(!showGHConfig);},title:"GitHub-inst\u00e4llningar",
+          style:{padding:"4px 8px",background:ghReady?"rgba(102,217,160,0.15)":"rgba(255,165,0,0.15)",border:"1px solid "+(ghReady?"#66d9a0":"#ffa94d"),borderRadius:6,color:ghReady?"#66d9a0":"#ffa94d",cursor:"pointer",fontSize:11,fontWeight:600}},
+          "\u2699\uFE0F GitHub"+(ghReady?" \u2713":""))
+      ),
+      /* GitHub config */
+      showGHConfig&&React.createElement('div',{style:{padding:"10px 12px",borderBottom:"1px solid "+C2.border,background:"rgba(74,158,255,0.06)",flexShrink:0}},
+        React.createElement('div',{style:{fontSize:10,fontWeight:700,letterSpacing:1,color:C2.dim,textTransform:"uppercase",marginBottom:6}},"GitHub-konfiguration"),
+        [["token","Token (ghp_...)","password"],["repo","Repo (user/repo)","text"],["branch","Branch","text"]].map(function(f){
+          return React.createElement('div',{key:f[0],style:{display:"flex",alignItems:"center",gap:6,marginBottom:5}},
+            React.createElement('label',{style:{fontSize:10,color:C2.dim,width:52,flexShrink:0}},f[0]==="branch"?"Branch":"token"===f[0]?"Token":"Repo"),
+            React.createElement('input',{type:f[2],placeholder:f[1],value:ghConfig[f[0]]||"",
+              onChange:function(key){return function(e){var n=Object.assign({},ghConfig);n[key]=e.target.value;saveGhConfig(n);};}(f[0]),
+              style:{flex:1,background:"rgba(255,255,255,0.05)",border:"1px solid "+C2.border,borderRadius:5,padding:"4px 7px",color:C2.text,fontSize:11,outline:"none"}})
+          );
+        }),
+        React.createElement('div',{style:{fontSize:9,color:C2.dim,marginTop:4}},
+          "Token beh\u00f6ver repo-scope. Bilder sparas i photos/ i repot."+(ghReady?" \u2713 Redo att ladda upp till "+ghConfig.repo:" " )
+        )
+      ),
+      /* Upload error */
+      uploadErr&&React.createElement('div',{style:{padding:"6px 12px",background:"rgba(255,80,80,0.15)",borderBottom:"1px solid rgba(255,80,80,0.3)",fontSize:11,color:"#ff6b6b",flexShrink:0}},
+        uploadErr,
+        React.createElement('button',{onClick:function(){setUploadErr(null);},style:{background:"none",border:"none",color:"#ff6b6b",cursor:"pointer",marginLeft:8,fontSize:13}},"\u2715")
+      ),
+      ind&&React.createElement('div',{style:{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}},
+        /* Drop zone */
+        React.createElement('label',{
+          style:{margin:"10px 12px 0",padding:"12px",border:"2px dashed "+(dragging?"#4a9eff":C2.border),borderRadius:8,textAlign:"center",
+            background:dragging?"rgba(74,158,255,0.08)":uploading?"rgba(102,217,160,0.06)":"rgba(255,255,255,0.02)",transition:"all 0.15s",flexShrink:0,display:"block",cursor:"pointer"},
+          onDragOver:function(e){e.preventDefault();setDragging(true);},
+          onDragLeave:function(){setDragging(false);},
+          onDrop:function(e){e.preventDefault();setDragging(false);processFiles(Array.from(e.dataTransfer.files));}},
+          uploading
+            ?React.createElement('div',{style:{color:"#66d9a0",fontSize:11}},"\u23F3 Laddar upp till GitHub\u2026")
+            :React.createElement('div',null,
+              React.createElement('div',{style:{fontSize:20,marginBottom:4}},dragging?"\uD83D\uDCC2":"\uD83D\uDCF7"),
+              React.createElement('div',{style:{fontSize:11,color:dragging?C2.accent:C2.dim}},dragging?"Sl\u00e4pp h\u00e4r!":"Dra & sl\u00e4pp bilder, eller klicka f\u00f6r att v\u00e4lja"),
+              React.createElement('div',{style:{fontSize:9,color:C2.dim,marginTop:2}},"JPG, PNG, WEBP \u2014 sparas p\u00e5 GitHub")
+            ),
+          React.createElement('input',{type:"file",accept:"image/*",multiple:true,style:{display:"none"},
+            onChange:function(e){processFiles(Array.from(e.target.files));e.target.value="";}})
+        ),
+        /* Grid */
+        React.createElement('div',{style:{flex:1,overflowY:"auto",padding:"10px 12px"}},
+          photos.length===0&&React.createElement('div',{style:{textAlign:"center",color:C2.dim,fontSize:12,marginTop:20}},"Inga foton \u00e4nnu \u2014 ladda upp via rutan ovan."),
+          React.createElement('div',{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))",gap:8}},photoGrid)
+        )
+      )
+    ),
+    /* Edit modal */
+    editPhoto&&React.createElement('div',{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000},
+      onClick:function(){setEditPhoto(null);}},
+      React.createElement('div',{style:{background:C2.panel,borderRadius:12,border:"1px solid "+C2.border,padding:20,minWidth:280,maxWidth:340},
+        onClick:function(e){e.stopPropagation();}},
+        React.createElement('div',{style:{fontSize:13,fontWeight:600,marginBottom:10}},"Redigera fotoinformation"),
+        photos[editPhoto.idx]&&React.createElement('img',{src:photos[editPhoto.idx].url,style:{width:"100%",height:130,objectFit:"cover",borderRadius:6,marginBottom:10,border:"1px solid "+C2.border}}),
+        React.createElement('div',{style:{marginBottom:8}},
+          React.createElement('div',{style:{fontSize:10,color:C2.dim,marginBottom:4}},"Typ"),
+          React.createElement('div',{style:{display:"flex",flexWrap:"wrap",gap:4}},
+            PHOTO_TYPES.map(function(pt){
+              return React.createElement('button',{key:pt.id,onClick:function(){setEditPhoto(function(ep){return Object.assign({},ep,{type:pt.id});});},
+                style:{padding:"3px 8px",borderRadius:5,border:"1px solid "+(editPhoto.type===pt.id?pt.color:C2.border),background:editPhoto.type===pt.id?"rgba(74,158,255,0.15)":"transparent",color:editPhoto.type===pt.id?pt.color:C2.dim,fontSize:10,cursor:"pointer"}},
+                pt.icon+" "+pt.label);
+            })
+          )
+        ),
+        [["label","Bildtext","t.ex. Br\u00f6llopsdag 1923"],["year","\u00c5r (ca)","t.ex. 1923"],["source","K\u00e4lla","t.ex. Familjearkiv"]].map(function(f){
+          return React.createElement('div',{key:f[0],style:{marginBottom:8}},
+            React.createElement('div',{style:{fontSize:10,color:C2.dim,marginBottom:3}},f[1]),
+            React.createElement('input',{type:"text",value:editPhoto[f[0]],placeholder:f[2],
+              onChange:function(key){return function(e){setEditPhoto(function(ep){var n=Object.assign({},ep);n[key]=e.target.value;return n;});};}(f[0]),
+              style:{width:"100%",boxSizing:"border-box",background:"rgba(255,255,255,0.05)",border:"1px solid "+C2.border,borderRadius:5,padding:"5px 8px",color:C2.text,fontSize:11,outline:"none"}})
+          );
+        }),
+        React.createElement('div',{style:{display:"flex",gap:8,justifyContent:"flex-end",marginTop:6}},
+          React.createElement('button',{onClick:function(){setEditPhoto(null);},style:{padding:"6px 14px",background:"transparent",border:"1px solid "+C2.border,borderRadius:6,color:C2.dim,cursor:"pointer",fontSize:11}},"Avbryt"),
+          React.createElement('button',{onClick:function(){savePhotoMeta(editPhoto.idx,{label:editPhoto.label,type:editPhoto.type,year:editPhoto.year,source:editPhoto.source});},
+            style:{padding:"6px 14px",background:"#4a9eff",border:"none",borderRadius:6,color:"#fff",cursor:"pointer",fontSize:11,fontWeight:600}},"Spara")
+        )
+      )
+    ),
+    /* Lightbox */
+    lightbox&&React.createElement('div',{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.92)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",zIndex:2000},
+      onClick:function(){setLightbox(null);}},
+      React.createElement('button',{onClick:function(){setLightbox(null);},style:{position:"absolute",top:16,right:16,background:"rgba(255,255,255,0.1)",border:"none",color:"#fff",fontSize:20,width:36,height:36,borderRadius:8,cursor:"pointer"}},"\u2715"),
+      lightbox.idx>0&&React.createElement('button',{onClick:function(e){e.stopPropagation();setLightbox(function(lb){return{photos:lb.photos,idx:lb.idx-1};});},
+        style:{position:"absolute",left:16,top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.1)",border:"none",color:"#fff",fontSize:28,width:44,height:44,borderRadius:8,cursor:"pointer"}},"\u2039"),
+      lightbox.idx<lightbox.photos.length-1&&React.createElement('button',{onClick:function(e){e.stopPropagation();setLightbox(function(lb){return{photos:lb.photos,idx:lb.idx+1};});},
+        style:{position:"absolute",right:16,top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.1)",border:"none",color:"#fff",fontSize:28,width:44,height:44,borderRadius:8,cursor:"pointer"}},"\u203a"),
+      React.createElement('img',{src:lightbox.photos[lightbox.idx].url,style:{maxWidth:"90vw",maxHeight:"75vh",objectFit:"contain",borderRadius:8},onClick:function(e){e.stopPropagation();}}),
+      React.createElement('div',{style:{marginTop:12,textAlign:"center"},onClick:function(e){e.stopPropagation();}},
+        React.createElement('div',{style:{color:"#fff",fontSize:13,fontWeight:600}},lightbox.photos[lightbox.idx].label||"Foto "+(lightbox.idx+1)),
+        lightbox.photos[lightbox.idx].year&&React.createElement('div',{style:{color:"#8899aa",fontSize:11,marginTop:2}},lightbox.photos[lightbox.idx].year),
+        lightbox.photos[lightbox.idx].source&&React.createElement('div',{style:{color:"#8899aa",fontSize:10,marginTop:1}},"K\u00e4lla: "+lightbox.photos[lightbox.idx].source),
+        React.createElement('div',{style:{color:"#555",fontSize:10,marginTop:4}},(lightbox.idx+1)+" / "+lightbox.photos.length)
+      )
+    )
   );
 }
 
@@ -1900,7 +1837,7 @@ function GenealogyApp(){
   return (
     <div style={{width:"100%",height:"100vh",background:C.bg,fontFamily:"'Segoe UI',sans-serif",color:C.text,display:"flex",overflow:"hidden"}}>
       {!showUp&&parsedData&&(<div style={{width:64,flexShrink:0,background:C.panel,borderRight:"1px solid "+C.border,display:"flex",flexDirection:"column",alignItems:"stretch",zIndex:20}}>
-        {[["3d","3D","\u25A6"],["map","Karta","\u2316"],["pedigree","Antavla","\u229E"],["fan","Solfj\u00e4der","\u25D4"],["kb","Kartbild","\u2609"],["places","Platser","\u29BF",["photos","Foton","📷"]].map(function(t){
+        {[["3d","3D","\u25A6"],["map","Karta","\u2316"],["pedigree","Antavla","\u229E"],["fan","Solfj\u00e4der","\u25D4"],["kb","Kartbild","\u2609"],["places","Platser","\u29BF"],["photos","Foton","📷"]].map(function(t){
           return <button key={t[0]} onClick={function(){setRightView(t[0]);}} title={t[1]} style={{padding:"10px 4px",background:rightView===t[0]?"rgba(74,158,255,0.15)":"transparent",border:"none",borderLeft:rightView===t[0]?"3px solid "+C.accent:"3px solid transparent",color:rightView===t[0]?C.accent:C.dim,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
             <span style={{fontSize:20,lineHeight:1}}>{t[2]}</span>
             <span style={{fontSize:8,letterSpacing:0.5,textTransform:"uppercase"}}>{t[1]}</span>
