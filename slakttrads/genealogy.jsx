@@ -929,8 +929,13 @@ function kartbildUrl(lat,lon,layer){
 
 // ═══ PLACES EDITOR ═══════════════════════════════════════
 function PlacesEditor({individuals,families,extraLocs,setExtraLocs,selectedId,buildPersonLocations,lookupLocation,hasParsedData}){
-  
   const {useState,useRef,useEffect,useCallback}=React;
+  if(!hasParsedData)return <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",color:"#8899aa",fontSize:13,gap:12,height:"100%",background:"#0d1117"}}>
+    <div style={{fontSize:40}}>📍</div>
+    <div style={{fontWeight:600,color:"#c9d1d9"}}>Platseditorn</div>
+    <div style={{fontSize:12,textAlign:"center",maxWidth:280,lineHeight:1.7}}>Ladda en GEDCOM-fil först via uppladdningsskärmen (3D-vyn), sedan kan du redigera och lägga till platser för varje person.</div>
+    <button onClick={function(){window.dispatchEvent(new CustomEvent('showUpload'));}} style={{padding:"8px 16px",background:"rgba(74,158,255,0.15)",border:"1px solid #4a9eff",color:"#4a9eff",borderRadius:6,fontSize:12,cursor:"pointer"}}>Öppna uppladdning</button>
+  </div>;
   var pids=individuals?Object.keys(individuals):[];
   var _s=useState;
   var s1=_s(selectedId||pids[0]||null),editId=s1[0],setEditId=s1[1];
@@ -939,6 +944,9 @@ function PlacesEditor({individuals,families,extraLocs,setExtraLocs,selectedId,bu
   var mapRef=useRef(null);
   var clickModeRef=useRef(false);
   var s4=_s(false),clickMode=s4[0],setClickMode=s4[1];
+
+  // Reset form when switching person
+  useEffect(function(){setEditIdx(null);},[editId]);
 
   var ind=editId&&individuals?individuals[editId]:null;
   var locs=ind?buildPersonLocations(ind,extraLocs):[];
@@ -1103,7 +1111,25 @@ function PlacesEditor({individuals,families,extraLocs,setExtraLocs,selectedId,bu
         <div style={{marginLeft:"auto",fontSize:11,color:C2.dim}}>{curIdx+1} / {pidList.length}</div>
       </div>
 
-      <canvas ref={mapRef} style={{width:"100%",height:200,display:"block",borderRadius:8,marginBottom:12,border:"1px solid "+C2.border}}/>
+    {/* Mini map - OSM iframe centered on person's locations */}
+    {(function(){
+      var clat=58.08,clon=11.58,zoom=10;
+      if(locs.length>0){
+        var withCoords=locs.filter(function(l){return l.lat&&l.lon;});
+        if(withCoords.length>0){
+          clat=withCoords.reduce(function(s,l){return s+l.lat;},0)/withCoords.length;
+          clon=withCoords.reduce(function(s,l){return s+l.lon;},0)/withCoords.length;
+          zoom=withCoords.length===1?13:10;
+        }
+      }
+      var osmUrl="https://www.openstreetmap.org/export/embed.html?bbox="+(clon-0.5)+"%2C"+(clat-0.3)+"%2C"+(clon+0.5)+"%2C"+(clat+0.3)+"&layer=mapnik&marker="+clat+"%2C"+clon;
+      return <div style={{borderRadius:8,overflow:"hidden",border:"1px solid #30363d",marginBottom:12,position:"relative"}}>
+        <iframe src={osmUrl} style={{width:"100%",height:200,border:"none",display:"block"}} title="Karta"/>
+        <div style={{position:"absolute",bottom:4,right:4,fontSize:10,color:"#555",background:"rgba(255,255,255,0.8)",padding:"2px 6px",borderRadius:3}}>
+          <a href={"https://www.openstreetmap.org/#map="+zoom+"/"+clat.toFixed(4)+"/"+clon.toFixed(4)} target="_blank" style={{color:"#4a9eff",textDecoration:"none"}}>Öppna OSM ↗</a>
+        </div>
+      </div>;
+    })()}
 
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
         <div style={{fontSize:11,color:C2.dim,letterSpacing:1,textTransform:"uppercase"}}>Platser ({locs.length})</div>
