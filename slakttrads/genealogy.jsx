@@ -932,6 +932,69 @@ function MapView(props) {
 }
 
 /* ═══ MAIN APP ════════════════════════════════════════════════ */
+// ═══ PLACES LEAFLET MAP ══════════════════════════════════
+function PlacesLeafletMap({locs,editIdx,onCoords}){
+  const {useRef,useEffect}=React;
+  var mapRef=useRef(null);
+  var leafRef=useRef(null);
+  var markerRef=useRef([]);
+  var clickMarkerRef=useRef(null);
+
+  useEffect(function(){
+    if(!mapRef.current)return;
+    if(typeof L==='undefined'){
+      // Leaflet not loaded - show fallback
+      mapRef.current.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#888;font-size:12px;">Laddar karta...</div>';
+      return;
+    }
+    // Init map once
+    if(!leafRef.current){
+      var clat=58.08,clon=11.58;
+      var withCoords=(locs||[]).filter(function(l){return l.lat&&l.lon;});
+      if(withCoords.length>0){
+        clat=withCoords.reduce(function(s,l){return s+l.lat;},0)/withCoords.length;
+        clon=withCoords.reduce(function(s,l){return s+l.lon;},0)/withCoords.length;
+      }
+      var m=L.map(mapRef.current).setView([clat,clon],12);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+        attribution:'© OpenStreetMap',maxZoom:19
+      }).addTo(m);
+      // Click to set coordinates
+      m.on('click',function(e){
+        var lat=e.latlng.lat.toFixed(4),lon=e.latlng.lng.toFixed(4);
+        if(clickMarkerRef.current)m.removeLayer(clickMarkerRef.current);
+        clickMarkerRef.current=L.marker([lat,lon],{
+          icon:L.divIcon({className:'',html:'<div style="background:#ffd060;width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.5)"></div>',iconSize:[14,14],iconAnchor:[7,7]})
+        }).addTo(m);
+        if(typeof window._placesSetCoords==='function')window._placesSetCoords(parseFloat(lat),parseFloat(lon));
+      });
+      leafRef.current=m;
+    }
+    // Update markers
+    var map=leafRef.current;
+    markerRef.current.forEach(function(mk){map.removeLayer(mk);});
+    markerRef.current=[];
+    var typeColors2={birth:'#2ecc71',death:'#e74c3c',resi:'#3498db',residence:'#3498db',emig:'#f39c12',immi:'#9b59b6',chr:'#95a5a6'};
+    var withC=(locs||[]).filter(function(l){return l.lat&&l.lon;});
+    withC.forEach(function(loc,i){
+      var col=typeColors2[loc.type]||'#3498db';
+      var isEditing=editIdx===i;
+      var mk=L.marker([loc.lat,loc.lon],{
+        icon:L.divIcon({className:'',html:'<div style="background:'+col+';width:'+(isEditing?18:12)+'px;height:'+(isEditing?18:12)+'px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.5);'+(isEditing?'outline:2px solid #ffd060;outline-offset:2px':'')+'"></div>',iconSize:[isEditing?18:12,isEditing?18:12],iconAnchor:[isEditing?9:6,isEditing?9:6]})
+      }).addTo(map);
+      mk.bindTooltip((loc.place||'')+(loc.from?' ('+loc.from+')':''),{permanent:false,direction:'top'});
+      markerRef.current.push(mk);
+    });
+    if(withC.length>0){
+      var bounds=L.latLngBounds(withC.map(function(l){return[l.lat,l.lon];}));
+      map.fitBounds(bounds,{padding:[20,20],maxZoom:14});
+    }
+    setTimeout(function(){if(leafRef.current)leafRef.current.invalidateSize();},100);
+  },[locs,editIdx]);
+
+  return <div ref={mapRef} style={{height:400,borderRadius:8,overflow:"hidden",border:"1px solid #30363d",marginBottom:12}}/>;
+}
+
 // ═══ PLACES EDITOR ═══════════════════════════════════════
 function PlacesEditor({individuals,families,extraLocs,setExtraLocs,selectedId,buildPersonLocations,lookupLocation,hasParsedData}){
   const {useState,useRef,useEffect,useCallback}=React;
@@ -1036,6 +1099,10 @@ function PlacesEditor({individuals,families,extraLocs,setExtraLocs,selectedId,bu
     var ef4=_es(loc.type||"resi"),etype=ef4[0],setEtype=ef4[1];
     var ef5=_es(loc.lat||""),elat=ef5[0],setElat=ef5[1];
     var ef6=_es(loc.lon||""),elon=ef6[0],setElon=ef6[1];
+    useEffect(function(){
+      window._placesSetCoords=function(lat,lon){setElat(lat.toFixed(4));setElon(lon.toFixed(4));};
+      return function(){if(window._placesSetCoords)delete window._placesSetCoords;};
+    },[]);
 
     function tryGeocode(){
       var found=lookupLocation(eplace);
@@ -1088,8 +1155,19 @@ function PlacesEditor({individuals,families,extraLocs,setExtraLocs,selectedId,bu
         <button onClick={function(){onSave(idx,{place:eplace,from:efrom?parseInt(efrom):null,to:eto?parseInt(eto):null,type:etype,lat:elat?parseFloat(elat):null,lon:elon?parseFloat(elon):null});}} style={{flex:2,padding:"5px 10px",background:"rgba(74,158,255,0.2)",border:"1px solid "+C2.accent,color:C2.accent,borderRadius:4,fontSize:11,cursor:"pointer",fontWeight:600}}>Spara</button>
       </div>
       <div style={{marginTop:8,fontSize:10,color:C2.dim}}>
-        Tip: Sök på <a href={"https://www.openstreetmap.org/search?query="+encodeURIComponent(eplace)} target="_blank" style={{color:C2.accent}}>OSM</a> → högerklicka på karta → "Visa adress" → kopiera lat/lon härifrån:
-        <br/><input placeholder="Klistra in: 58.1234,11.5678" onChange={function(e){var p=e.target.value.trim().split(/[,\s]+/);if(p.length>=2&&!isNaN(p[0])&&!isNaN(p[1])){setElat(parseFloat(p[0]).toFixed(4));setElon(parseFloat(p[1]).toFixed(4));}}} style={{width:"100%",marginTop:4,background:"#0d1117",border:"1px solid #4a9eff",color:"#c9d1d9",borderRadius:4,padding:"3px 8px",fontSize:11,boxSizing:"border-box"}} placeholder="Klistra koordinater: 58.1234, 11.5678"/>
+        Tips: Öppna <a href={"https://www.openstreetmap.org/search?query="+encodeURIComponent(eplace)} target="_blank" style={{color:C2.accent}}>OSM ↗</a> i ny flik → navigera till platsen → kopiera URL:en och klistra in här (fungerar även med Google Maps-URL):
+        <br/><input placeholder="Klistra in: 58.1234,11.5678" onChange={function(e){
+  var v=e.target.value.trim();
+  // OSM URL: #map=18/58.233635/11.698288
+  var osmHash=v.match(/#map=\d+\/([\d.-]+)\/([\d.-]+)/);
+  if(osmHash){setElat(parseFloat(osmHash[1]).toFixed(4));setElon(parseFloat(osmHash[2]).toFixed(4));return;}
+  // Google Maps: @58.2336,11.6982
+  var gm=v.match(/@([\d.-]+),([\d.-]+)/);
+  if(gm){setElat(parseFloat(gm[1]).toFixed(4));setElon(parseFloat(gm[2]).toFixed(4));return;}
+  // Plain: 58.1234, 11.5678 or 58.1234 11.5678
+  var p=v.split(/[,\s]+/);
+  if(p.length>=2&&!isNaN(p[0])&&!isNaN(p[1])){setElat(parseFloat(p[0]).toFixed(4));setElon(parseFloat(p[1]).toFixed(4));}
+}} style={{width:"100%",marginTop:4,background:"#0d1117",border:"1px solid #4a9eff",color:"#c9d1d9",borderRadius:4,padding:"3px 8px",fontSize:11,boxSizing:"border-box"}} placeholder="Klistra OSM-URL, Google Maps-URL eller: 58.1234, 11.5678"/>
       </div>
     </div>;
   };
@@ -1119,30 +1197,9 @@ function PlacesEditor({individuals,families,extraLocs,setExtraLocs,selectedId,bu
         <div style={{marginLeft:"auto",fontSize:11,color:C2.dim}}>{curIdx+1} / {pidList.length}</div>
       </div>
 
-    {/* Interactive Leaflet map */}
-    {(function(){
-      var clat=58.08,clon=11.58;
-      var withCoords=locs.filter(function(l){return l.lat&&l.lon;});
-      if(withCoords.length>0){
-        clat=withCoords.reduce(function(s,l){return s+l.lat;},0)/withCoords.length;
-        clon=withCoords.reduce(function(s,l){return s+l.lon;},0)/withCoords.length;
-      }
-      // Build marker params for OSM embed
-      var bbox=(clon-0.3)+"%2C"+(clat-0.2)+"%2C"+(clon+0.3)+"%2C"+(clat+0.2);
-      var osmSrc="https://www.openstreetmap.org/export/embed.html?bbox="+bbox+"&layer=mapnik"+(withCoords.length>0?"&marker="+clat+"%2C"+clon:"");
-      return <div style={{borderRadius:8,overflow:"hidden",border:"1px solid #30363d",marginBottom:12,position:"relative"}}>
-        <iframe src={osmSrc} style={{width:"100%",height:400,border:"none",display:"block"}} title="Karta"/>
-        <div style={{position:"absolute",top:8,right:8,display:"flex",flexDirection:"column",gap:4,zIndex:10}}>
-          <a href={"https://www.openstreetmap.org/#map=14/"+clat.toFixed(4)+"/"+clon.toFixed(4)} target="_blank"
-            style={{fontSize:10,padding:"4px 8px",background:"rgba(0,0,0,0.75)",color:"#4a9eff",borderRadius:4,textDecoration:"none",border:"1px solid #4a9eff"}}>
-            Öppna OSM ↗
-          </a>
-          {editIdx>=0&&<div style={{fontSize:10,padding:"4px 8px",background:"rgba(0,0,0,0.75)",color:"#ffd060",borderRadius:4,border:"1px solid #ffd060",textAlign:"center",lineHeight:1.4}}>
-            Hitta platsen på OSM<br/>högerklicka → kopiera koordinater<br/>klistra in i fälten nedan
-          </div>}
-        </div>
-      </div>;
-    })()}
+    <PlacesLeafletMap locs={locs} editIdx={editIdx} onCoords={function(lat,lon){
+        if(typeof window._placesSetCoords==='function')window._placesSetCoords(lat,lon);
+      }}/>
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
         <div style={{fontSize:11,color:C2.dim,letterSpacing:1,textTransform:"uppercase"}}>Platser ({locs.length})</div>
         <button onClick={function(){setEditIdx(-1);}} style={{padding:"4px 10px",background:"rgba(74,158,255,0.15)",border:"1px solid "+C2.accent,color:C2.accent,borderRadius:4,fontSize:11,cursor:"pointer"}}>+ Lägg till</button>
