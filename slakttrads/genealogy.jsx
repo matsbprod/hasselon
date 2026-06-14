@@ -1181,8 +1181,26 @@ function GenealogyApp(){
   var effStart=rangeStart!==null?rangeStart:yearRange.min,effEnd=rangeEnd!==null?rangeEnd:yearRange.max;
   useEffect(function(){if(isPlaying){playRef.current=setInterval(function(){setSliderYear(function(y){if(y>=effEnd){setIsPlaying(false);return effEnd;}return y+1;});},200);}else clearInterval(playRef.current);return function(){clearInterval(playRef.current);};},[isPlaying,effEnd]);
 
-  var loadSample=useCallback(function(){var pd=parseGedcom(GEDCOM);setParsedData(pd);setLayout(computeLayout(pd.individuals,pd.families));setIsSample(true);setShowUp(false);var tx={};var ids=Object.keys(PM);for(var i=0;i<ids.length;i++){var t=genPhotoTex(ids[i]);if(t)tx[ids[i]]=t;}setPhotoTex(tx);setSliderYear(1950);setRangeStart(null);setRangeEnd(null);},[]);
-  var handleFile=useCallback(function(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(ev){var pd=parseGedcom(ev.target.result);setParsedData(pd);setLayout(computeLayout(pd.individuals,pd.families));setIsSample(false);setPhotoTex({});setShowUp(false);setRangeStart(null);setRangeEnd(null);};r.readAsText(f);},[]);
+  var loadSample=useCallback(function(){
+    try{
+      var pd=parseGedcom(GEDCOM);setParsedData(pd);setLayout(computeLayout(pd.individuals,pd.families));setIsSample(true);setShowUp(false);
+      var tx={};var ids=Object.keys(PM);for(var i=0;i<ids.length;i++){var t=genPhotoTex(ids[i]);if(t)tx[ids[i]]=t;}setPhotoTex(tx);
+      setSliderYear(1950);setRangeStart(null);setRangeEnd(null);
+    }catch(err){alert("Fel: "+err.message);console.error(err);}
+  },[]);
+  var handleFile=useCallback(function(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(ev){
+    try{
+      var pd=parseGedcom(ev.target.result);
+      setParsedData(pd);
+      setLayout(computeLayout(pd.individuals,pd.families));
+      setIsSample(false);setPhotoTex({});setShowUp(false);
+      setRangeStart(null);setRangeEnd(null);
+      setRightView("map"); // Start on map view - safer than 3D on first load
+    }catch(err){
+      alert("Fel vid inläsning av GEDCOM: "+err.message);
+      console.error(err);
+    }
+  };r.readAsText(f);},[]);
 
   // Photo folder upload: expects files like I2158_age25.png, mapping.txt
   var sLoc=_s({}),extraLocs=sLoc[0],setExtraLocs=sLoc[1];
@@ -1495,7 +1513,10 @@ class ErrorBoundary extends React.Component {
   constructor(props){super(props);this.state={err:null};}
   componentDidCatch(e){this.setState({err:e});}
   static getDerivedStateFromError(e){return {err:e};}
-  render(){if(this.state.err)return React.createElement('div',{style:{color:'red',padding:20}},'ERROR: '+this.state.err.message);return this.props.children;}
+  render(){
+    if(this.state.err)return React.createElement('div',{style:{color:'red',padding:20}},'ERROR: '+this.state.err.message);
+    return this.props.children;
+  }
 }
 const _root=ReactDOM.createRoot(document.getElementById('root'));
 _root.render(React.createElement(ErrorBoundary,null,React.createElement(GenealogyApp,null)));
