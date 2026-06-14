@@ -649,11 +649,9 @@ function MapView(props) {
   // Tile sources
   var TILE_SOURCES={
     osm:{name:"Standard",url:function(z,x,y){var s=["a","b","c"][(x+y)%3];return"https://"+s+".tile.openstreetmap.org/"+z+"/"+x+"/"+y+".png";},attr:"\u00A9 OpenStreetMap"},
-    lm:{name:"Topo Sverige",url:function(z,x,y){return"https://maps.lantmateriet.se/open/topowebb-ccby/v1/wmts/1.0.0/topowebb/default/3857/"+z+"/"+y+"/"+x+".png";},attr:"\u00A9 Lantm\u00e4teriet CC0"},
     topo:{name:"Topo",url:function(z,x,y){var s=["a","b","c"][(x+y)%3];return"https://"+s+".tile.opentopomap.org/"+z+"/"+x+"/"+y+".png";},attr:"\u00A9 OpenTopoMap"},
     cycle:{name:"Terrain",url:function(z,x,y){return"https://tile.thunderforest.com/landscape/"+z+"/"+x+"/"+y+".png?apikey=6170aad10dfd42a38d4d8c709a536f38";},attr:"\u00A9 Thunderforest"},
-    kb_eko:{name:"Ekonomisk karta",noCors:true,url:function(z,x,y){return"https://mapproxy.openstreetmap.se/tms/1.0.0/ek_EPSG3857/"+z+"/"+x+"/"+(Math.pow(2,z)-1-y)+".png";},attr:"\u00A9 Lantm\u00e4teriet"},
-    kb_harad:{name:"H\u00e4radskartan",noCors:true,url:function(z,x,y){return"https://mapproxy.openstreetmap.se/tms/1.0.0/hk_EPSG3857/"+z+"/"+x+"/"+(Math.pow(2,z)-1-y)+".png";},attr:"\u00A9 Lantm\u00e4teriet"},
+    tiles_ekon:{name:"Ekonomisk karta",noCors:true,url:function(z,x,y){return"tiles_ekon/"+z+"/"+x+"/"+y+".png";},attr:"\u00A9 Lantm\u00e4teriet CC0"},
   };
 
   // Slippy map math (Web Mercator)
@@ -1085,7 +1083,7 @@ function GenealogyApp(){
   return (
     <div style={{width:"100%",height:"100vh",background:C.bg,fontFamily:"'Segoe UI',sans-serif",color:C.text,display:"flex",overflow:"hidden"}}>
       {!showUp&&parsedData&&(<div style={{width:64,flexShrink:0,background:C.panel,borderRight:"1px solid "+C.border,display:"flex",flexDirection:"column",alignItems:"stretch",zIndex:20}}>
-        {[["3d","3D","\u25A6"],["map","Karta","\u2316"],["pedigree","Antavla","\u229E"],["fan","Solfj\u00e4der","\u25D4"]].map(function(t){
+        {[["3d","3D","\u25A6"],["map","Karta","\u2316"],["pedigree","Antavla","\u229E"],["fan","Solfj\u00e4der","\u25D4"],["kb","Kartbild","\u2609"]].map(function(t){
           return <button key={t[0]} onClick={function(){setRightView(t[0]);}} title={t[1]} style={{padding:"10px 4px",background:rightView===t[0]?"rgba(74,158,255,0.15)":"transparent",border:"none",borderLeft:rightView===t[0]?"3px solid "+C.accent:"3px solid transparent",color:rightView===t[0]?C.accent:C.dim,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
             <span style={{fontSize:20,lineHeight:1}}>{t[2]}</span>
             <span style={{fontSize:8,letterSpacing:0.5,textTransform:"uppercase"}}>{t[1]}</span>
@@ -1127,8 +1125,7 @@ function GenealogyApp(){
             {panelPerson.birthDate&&<div><span style={{color:C.dim}}>Born </span>{panelPerson.birthDate}{panelPerson.birthPlace?" · "+panelPerson.birthPlace:""}</div>}
               {panelPerson.birthPlace&&lookupLocation(panelPerson.birthPlace)&&<div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:4}}>
                   <a href={kartbildUrl((lookupLocation(panelPerson.birthPlace)||{}).lat,(lookupLocation(panelPerson.birthPlace)||{}).lon,0x10000)} target="_blank" style={{fontSize:9,padding:"2px 6px",background:"rgba(255,200,50,0.15)",border:"1px solid rgba(255,200,50,0.4)",borderRadius:3,color:"#ffd060",textDecoration:"none"}}>📜 Ekon.karta</a>
-                  <a href={kartbildUrl((lookupLocation(panelPerson.birthPlace)||{}).lat,(lookupLocation(panelPerson.birthPlace)||{}).lon,0x4000)} target="_blank" style={{fontSize:9,padding:"2px 6px",background:"rgba(255,200,50,0.15)",border:"1px solid rgba(255,200,50,0.4)",borderRadius:3,color:"#ffd060",textDecoration:"none"}}>🗺 Häradskartan</a>
-                  <a href={kartbildUrl((lookupLocation(panelPerson.birthPlace)||{}).lat,(lookupLocation(panelPerson.birthPlace)||{}).lon,0x100)} target="_blank" style={{fontSize:9,padding:"2px 6px",background:"rgba(100,180,255,0.15)",border:"1px solid rgba(100,180,255,0.4)",borderRadius:3,color:"#64b4ff",textDecoration:"none"}}>✈ Flygfoto 1960</a>
+                                    <a href={kartbildUrl((lookupLocation(panelPerson.birthPlace)||{}).lat,(lookupLocation(panelPerson.birthPlace)||{}).lon,0x100)} target="_blank" style={{fontSize:9,padding:"2px 6px",background:"rgba(100,180,255,0.15)",border:"1px solid rgba(100,180,255,0.4)",borderRadius:3,color:"#64b4ff",textDecoration:"none"}}>✈ Flygfoto 1960</a>
                   <a href={kartbildUrl((lookupLocation(panelPerson.birthPlace)||{}).lat,(lookupLocation(panelPerson.birthPlace)||{}).lon,0x200)} target="_blank" style={{fontSize:9,padding:"2px 6px",background:"rgba(100,180,255,0.15)",border:"1px solid rgba(100,180,255,0.4)",borderRadius:3,color:"#64b4ff",textDecoration:"none"}}>✈ Flygfoto 1975</a>
                 </div>}
             {panelPerson.deathDate&&<div><span style={{color:C.dim}}>Died </span>{panelPerson.deathDate}{panelPerson.deathPlace?" · "+panelPerson.deathPlace:""}</div>}
@@ -1154,7 +1151,20 @@ function GenealogyApp(){
         <div style={{flex:1,position:"relative",minHeight:0}}>
           {rightView==="map"&&<MapView individuals={parsedData.individuals} year={sliderYear} rangeStart={effStart} rangeEnd={effEnd} selectedId={sel?sel.id:null} onSelect={mapSel} isSample={isSample}/>}
           {rightView==="pedigree"&&<PedigreeView individuals={parsedData.individuals} families={parsedData.families} selectedId={sel?sel.id:null} mode={pedigreeMode} onInspect={function(id){var p=parsedData.individuals[id];if(p){p.id=id;setInspPerson(p);}}} onSelect={function(id){var nd=layout.nodes.find(function(n){return n.id===id;});setSel(nd||null);}} photoUrls={photoUrls}/>}
-          {rightView==="fan"&&<FanView individuals={parsedData.individuals} families={parsedData.families} selectedId={sel?sel.id:null} mode={pedigreeMode} onInspect={function(id){var p=parsedData.individuals[id];if(p){p.id=id;setInspPerson(p);}}} onSelect={function(id){var nd=layout.nodes.find(function(n){return n.id===id;});setSel(nd||null);}} photoUrls={photoUrls}/>}
+          {rightView==="fan"&&<FanView individuals={parsedData.individuals} families={parsedData.families} selectedId={sel?sel.id:null} mode={pedigreeMode} onInspect={function(id){var p=parsedData.individuals[id];if(p){p.id=id;setInspPerson(p);}}} onSelect={function(id){var nd=layout.nodes.find(function(n){return n.id===id;});setSel(nd||null);}} photoUrls={photoUrls}/>
+              {rightView==="kb"&&(<div style={{width:"100%",height:"100%",position:"relative"}}>
+              <iframe
+                src={(function(){var lat=sel&&sel.birthPlace?lookupLocation(sel.birthPlace):null;if(!lat&&sel)lat=lookupLocation(sel.birthPlace||"");var defLat=58.08,defLon=11.58;return "https://kartbild.com/#14/"+(lat?lat.lat:defLat)+"/"+(lat?lat.lon:defLon)+"/0x10000";})()}
+                style={{width:"100%",height:"100%",border:"none"}}
+                title="Kartbild historisk karta"
+              />
+              <div style={{position:"absolute",top:8,left:8,display:"flex",gap:4,flexWrap:"wrap",zIndex:10}}>
+                {[["Ekonomisk","0x10000"],["Flyg 1960","0x100"],["Flyg 1975","0x200"],["Topo","0x1000"]].map(function(kb){
+                  return <button key={kb[0]} onClick={function(){var lat=sel&&sel.birthPlace?lookupLocation(sel.birthPlace):null;var defLat=58.08,defLon=11.58;var url="https://kartbild.com/#14/"+(lat?lat.lat:defLat)+"/"+(lat?lat.lon:defLon)+"/"+kb[1];document.querySelector('iframe[title="Kartbild historisk karta"]').src=url;}} style={{fontSize:10,padding:"4px 8px",background:"rgba(0,0,0,0.7)",color:"#fff",border:"1px solid #555",borderRadius:4,cursor:"pointer"}}>{kb[0]}</button>;
+                })}
+              </div>
+            </div>)}
+              }
         </div>
         <div style={{flexShrink:0,padding:"8px 14px 10px",background:C.panel,borderTop:"1px solid "+C.border}}>
           <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
