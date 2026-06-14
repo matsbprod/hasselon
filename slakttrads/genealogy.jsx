@@ -1128,7 +1128,7 @@ function GenealogyApp(){
                                     <a href={kartbildUrl((lookupLocation(panelPerson.birthPlace)||{}).lat,(lookupLocation(panelPerson.birthPlace)||{}).lon,0x100)} target="_blank" style={{fontSize:9,padding:"2px 6px",background:"rgba(100,180,255,0.15)",border:"1px solid rgba(100,180,255,0.4)",borderRadius:3,color:"#64b4ff",textDecoration:"none"}}>✈ Flygfoto 1960</a>
                   <a href={kartbildUrl((lookupLocation(panelPerson.birthPlace)||{}).lat,(lookupLocation(panelPerson.birthPlace)||{}).lon,0x200)} target="_blank" style={{fontSize:9,padding:"2px 6px",background:"rgba(100,180,255,0.15)",border:"1px solid rgba(100,180,255,0.4)",borderRadius:3,color:"#64b4ff",textDecoration:"none"}}>✈ Flygfoto 1975</a>
                 </div>}
-            {panelPerson.deathDate&&<div><span style={{color:C.dim}}>Died </span>{panelPerson.deathDate}{panelPerson.deathPlace?" · "+panelPerson.deathPlace:""}</div>}
+                {panelPerson.deathDate&&<div><span style={{color:C.dim}}>Died </span>{panelPerson.deathDate}{panelPerson.deathPlace?" · "+panelPerson.deathPlace:""}</div>}
           </div>
           {photoUrls[panelPerson.id]&&photoUrls[panelPerson.id].length>0&&(
             <div style={{padding:"4px 12px 10px"}}>
@@ -1151,7 +1151,7 @@ function GenealogyApp(){
         <div style={{flex:1,position:"relative",minHeight:0}}>
           {rightView==="map"&&<MapView individuals={parsedData.individuals} year={sliderYear} rangeStart={effStart} rangeEnd={effEnd} selectedId={sel?sel.id:null} onSelect={mapSel} isSample={isSample}/>}
           {rightView==="pedigree"&&<PedigreeView individuals={parsedData.individuals} families={parsedData.families} selectedId={sel?sel.id:null} mode={pedigreeMode} onInspect={function(id){var p=parsedData.individuals[id];if(p){p.id=id;setInspPerson(p);}}} onSelect={function(id){var nd=layout.nodes.find(function(n){return n.id===id;});setSel(nd||null);}} photoUrls={photoUrls}/>}
-          {rightView==="fan"&&<FanView individuals={parsedData.individuals} families={parsedData.families} selectedId={sel?sel.id:null} mode={pedigreeMode} onInspect={function(id){var p=parsedData.individuals[id];if(p){p.id=id;setInspPerson(p);}}} onSelect={function(id){var nd=layout.nodes.find(function(n){return n.id===id;});setSel(nd||null);}} photoUrls={photoUrls}/>
+          {rightView==="fan"&&<FanView individuals={parsedData.individuals} families={parsedData.families} selectedId={sel?sel.id:null} mode={pedigreeMode} onInspect={function(id){var p=parsedData.individuals[id];if(p){p.id=id;setInspPerson(p);}}} onSelect={function(id){var nd=layout.nodes.find(function(n){return n.id===id;});setSel(nd||null);}} photoUrls={photoUrls}/>}
               {rightView==="kb"&&(<div style={{width:"100%",height:"100%",position:"relative"}}>
               <iframe
                 src={(function(){var lat=sel&&sel.birthPlace?lookupLocation(sel.birthPlace):null;if(!lat&&sel)lat=lookupLocation(sel.birthPlace||"");var defLat=58.08,defLon=11.58;return "https://kartbild.com/#14/"+(lat?lat.lat:defLat)+"/"+(lat?lat.lon:defLon)+"/0x10000";})()}
