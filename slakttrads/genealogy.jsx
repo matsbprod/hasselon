@@ -927,6 +927,221 @@ function kartbildUrl(lat,lon,layer){
   return 'https://kartbild.com/#15/'+lat.toFixed(4)+'/'+lon.toFixed(4)+'/'+layer;
 }
 
+// ═══ PLACES EDITOR ═══════════════════════════════════════
+function PlacesEditor({individuals,families,extraLocs,setExtraLocs,selectedId,buildPersonLocations,lookupLocation}){
+  const {useState,useRef,useEffect,useCallback}=React;
+  var pids=individuals?Object.keys(individuals):[];
+  var _s=useState;
+  var s1=_s(selectedId||pids[0]||null),editId=s1[0],setEditId=s1[1];
+  var s2=_s(null),editIdx=s2[0],setEditIdx=s2[1];
+  var s3=_s(""),search=s3[0],setSearch=s3[1];
+  var mapRef=useRef(null);
+  var clickModeRef=useRef(false);
+  var s4=_s(false),clickMode=s4[0],setClickMode=s4[1];
+
+  var ind=editId&&individuals?individuals[editId]:null;
+  var locs=ind?buildPersonLocations(ind,extraLocs):[];
+  var manualLocs=extraLocs[editId]||null;
+
+  // Save a location entry
+  function saveLoc(idx,entry){
+    var cur=extraLocs[editId]?[...extraLocs[editId]]:[...locs];
+    if(idx===-1){cur.push(entry);}else{cur[idx]=entry;}
+    var next=Object.assign({},extraLocs);
+    next[editId]=cur;
+    setExtraLocs(next);
+    setEditIdx(null);
+  }
+
+  function deleteLoc(idx){
+    var cur=extraLocs[editId]?[...extraLocs[editId]]:[...locs];
+    cur.splice(idx,1);
+    var next=Object.assign({},extraLocs);
+    next[editId]=cur.length>0?cur:undefined;
+    if(!next[editId])delete next[editId];
+    setExtraLocs(next);
+    setEditIdx(null);
+  }
+
+  function exportJson(){
+    var blob=new Blob([JSON.stringify(extraLocs,null,2)],{type:"application/json"});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement("a");a.href=url;a.download="locations.json";a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // Navigate to prev/next person
+  var pidList=pids.filter(function(p){return individuals[p]&&individuals[p].name;}).sort(function(a,b){return (individuals[a].name||"").localeCompare(individuals[b].name||"");});
+  var curIdx=pidList.indexOf(editId);
+  function navPrev(){if(curIdx>0){setEditId(pidList[curIdx-1]);setEditIdx(null);}}
+  function navNext(){if(curIdx<pidList.length-1){setEditId(pidList[curIdx+1]);setEditIdx(null);}}
+
+  // Filter for search
+  var filteredPids=search.trim()?pidList.filter(function(p){return individuals[p].name.toLowerCase().indexOf(search.toLowerCase())>=0;}):[];
+
+  // Draw map using our existing OSM tiles
+  useEffect(function(){
+    var cv=mapRef.current;if(!cv)return;
+    var ctx=cv.getContext("2d");
+    var W=cv.parentElement.clientWidth||400,H=200;
+    cv.width=W*2;cv.height=H*2;cv.style.width=W+"px";cv.style.height=H+"px";
+    ctx.scale(2,2);
+    ctx.fillStyle="#e8f0e8";ctx.fillRect(0,0,W,H);
+    ctx.fillStyle="#aaa";ctx.font="12px Arial";ctx.textAlign="center";
+    ctx.fillText("Klicka 'Välj på karta' för att öppna OSM-karta",W/2,H/2-8);
+    ctx.fillStyle="#888";ctx.font="11px Arial";
+    ctx.fillText("och ange koordinater manuellt",W/2,H/2+12);
+
+    // Draw location dots
+    if(!locs.length)return;
+    // Simple projection centered on Orust area
+    var clat=58.1,clon=11.6,scale=W/3;
+    locs.forEach(function(loc,i){
+      if(!loc.lat||!loc.lon)return;
+      var x=W/2+(loc.lon-clon)*scale*Math.cos(clat*Math.PI/180)*2;
+      var y=H/2-(loc.lat-clat)*scale*2;
+      var col=loc.type==="birth"?"#2ecc71":loc.type==="death"?"#e74c3c":"#3498db";
+      ctx.fillStyle=col;
+      ctx.beginPath();ctx.arc(x,y,6,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle="#fff";ctx.strokeStyle=col;ctx.lineWidth=1;
+      ctx.strokeText((loc.from||"?")+"",x,y-10);
+    });
+  },[locs,editId]);
+
+  var C2={bg:"#0d1117",panel:"#161b22",border:"#30363d",text:"#c9d1d9",dim:"#8899aa",accent:"#4a9eff"};
+  var typeColors={birth:"#2ecc71",death:"#e74c3c",resi:"#3498db",residence:"#3498db",emig:"#f39c12",immi:"#9b59b6"};
+  var typeLabels={birth:"Födelse",death:"Död",resi:"Bostad",residence:"Bostad",emig:"Emigration",immi:"Immigration",chr:"Dop"};
+
+  var EditForm=function({loc,idx,onSave,onCancel,onDelete}){
+    var _es=useState;
+    var ef1=_es(loc.place||""),eplace=ef1[0],setEplace=ef1[1];
+    var ef2=_es(loc.from||""),efrom=ef2[0],setEfrom=ef2[1];
+    var ef3=_es(loc.to||""),eto=ef3[0],setEto=ef3[1];
+    var ef4=_es(loc.type||"resi"),etype=ef4[0],setEtype=ef4[1];
+    var ef5=_es(loc.lat||""),elat=ef5[0],setElat=ef5[1];
+    var ef6=_es(loc.lon||""),elon=ef6[0],setElon=ef6[1];
+
+    function tryGeocode(){
+      var found=lookupLocation(eplace);
+      if(found){setElat(found.lat.toFixed(4));setElon(found.lon.toFixed(4));}
+      else alert("Platsen '"+eplace+"' hittades inte i geocoding-registret. Ange koordinater manuellt.");
+    }
+
+    return <div style={{background:"rgba(74,158,255,0.08)",border:"1px solid "+C2.accent,borderRadius:8,padding:12,marginTop:8}}>
+      <div style={{display:"flex",gap:8,marginBottom:8}}>
+        <div style={{flex:1}}>
+          <div style={{fontSize:10,color:C2.dim,marginBottom:3}}>Platsnamn</div>
+          <input value={eplace} onChange={function(e){setEplace(e.target.value);}} style={{width:"100%",background:"#0d1117",border:"1px solid "+C2.border,color:C2.text,borderRadius:4,padding:"4px 8px",fontSize:12,boxSizing:"border-box"}}/>
+        </div>
+        <button onClick={tryGeocode} style={{marginTop:16,padding:"4px 8px",background:"rgba(74,158,255,0.15)",border:"1px solid "+C2.accent,color:C2.accent,borderRadius:4,fontSize:11,cursor:"pointer",whiteSpace:"nowrap"}}>Geocoda</button>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:8}}>
+        <div>
+          <div style={{fontSize:10,color:C2.dim,marginBottom:3}}>Från år</div>
+          <input type="number" value={efrom} onChange={function(e){setEfrom(e.target.value);}} style={{width:"100%",background:"#0d1117",border:"1px solid "+C2.border,color:C2.text,borderRadius:4,padding:"4px 8px",fontSize:12,boxSizing:"border-box"}}/>
+        </div>
+        <div>
+          <div style={{fontSize:10,color:C2.dim,marginBottom:3}}>Till år</div>
+          <input type="number" value={eto} onChange={function(e){setEto(e.target.value);}} style={{width:"100%",background:"#0d1117",border:"1px solid "+C2.border,color:C2.text,borderRadius:4,padding:"4px 8px",fontSize:12,boxSizing:"border-box"}}/>
+        </div>
+        <div>
+          <div style={{fontSize:10,color:C2.dim,marginBottom:3}}>Typ</div>
+          <select value={etype} onChange={function(e){setEtype(e.target.value);}} style={{width:"100%",background:"#0d1117",border:"1px solid "+C2.border,color:C2.text,borderRadius:4,padding:"4px 6px",fontSize:12,boxSizing:"border-box"}}>
+            <option value="birth">Födelse</option>
+            <option value="resi">Bostad</option>
+            <option value="emig">Emigration</option>
+            <option value="immi">Immigration</option>
+            <option value="chr">Dop</option>
+            <option value="death">Död</option>
+          </select>
+        </div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+        <div>
+          <div style={{fontSize:10,color:C2.dim,marginBottom:3}}>Latitud</div>
+          <input type="number" step="0.0001" value={elat} onChange={function(e){setElat(e.target.value);}} style={{width:"100%",background:"#0d1117",border:"1px solid "+C2.border,color:C2.text,borderRadius:4,padding:"4px 8px",fontSize:12,boxSizing:"border-box"}}/>
+        </div>
+        <div>
+          <div style={{fontSize:10,color:C2.dim,marginBottom:3}}>Longitud</div>
+          <input type="number" step="0.0001" value={elon} onChange={function(e){setElon(e.target.value);}} style={{width:"100%",background:"#0d1117",border:"1px solid "+C2.border,color:C2.text,borderRadius:4,padding:"4px 8px",fontSize:12,boxSizing:"border-box"}}/>
+        </div>
+      </div>
+      <div style={{display:"flex",gap:6}}>
+        {idx>=0&&<button onClick={function(){onDelete(idx);}} style={{padding:"5px 10px",background:"rgba(255,107,107,0.15)",border:"1px solid rgba(255,107,107,0.4)",color:"#ff6b6b",borderRadius:4,fontSize:11,cursor:"pointer"}}>Ta bort</button>}
+        <button onClick={onCancel} style={{flex:1,padding:"5px 10px",background:"rgba(255,255,255,0.05)",border:"1px solid "+C2.border,color:C2.dim,borderRadius:4,fontSize:11,cursor:"pointer"}}>Avbryt</button>
+        <button onClick={function(){onSave(idx,{place:eplace,from:efrom?parseInt(efrom):null,to:eto?parseInt(eto):null,type:etype,lat:elat?parseFloat(elat):null,lon:elon?parseFloat(elon):null});}} style={{flex:2,padding:"5px 10px",background:"rgba(74,158,255,0.2)",border:"1px solid "+C2.accent,color:C2.accent,borderRadius:4,fontSize:11,cursor:"pointer",fontWeight:600}}>Spara</button>
+      </div>
+      <div style={{marginTop:8,fontSize:10,color:C2.dim}}>
+        Tip: <a href={"https://www.openstreetmap.org/search?query="+encodeURIComponent(eplace)} target="_blank" style={{color:C2.accent}}>Sök på OSM</a> för att hitta exakta koordinater
+      </div>
+    </div>;
+  };
+
+  return <div style={{width:"100%",height:"100%",display:"flex",flexDirection:"column",background:C2.bg,color:C2.text,overflow:"hidden"}}>
+    <div style={{flexShrink:0,padding:"10px 14px",borderBottom:"1px solid "+C2.border,display:"flex",gap:8,alignItems:"center"}}>
+      <div style={{position:"relative",flex:1}}>
+        <input value={search} onChange={function(e){setSearch(e.target.value);}} placeholder="Sök person..." style={{width:"100%",background:"rgba(255,255,255,0.05)",border:"1px solid "+C2.border,color:C2.text,borderRadius:6,padding:"6px 10px",fontSize:12,boxSizing:"border-box"}}/>
+        {search&&filteredPids.length>0&&<div style={{position:"absolute",top:"100%",left:0,right:0,background:C2.panel,border:"1px solid "+C2.border,borderRadius:6,zIndex:50,maxHeight:160,overflowY:"auto"}}>
+          {filteredPids.slice(0,10).map(function(p){return <div key={p} onClick={function(){setEditId(p);setSearch("");setEditIdx(null);}} style={{padding:"6px 10px",cursor:"pointer",fontSize:12,borderBottom:"1px solid "+C2.border}}>{individuals[p].name}</div>;})}
+        </div>}
+      </div>
+      <button onClick={navPrev} disabled={curIdx<=0} style={{padding:"6px 10px",background:"rgba(255,255,255,0.05)",border:"1px solid "+C2.border,color:C2.dim,borderRadius:6,cursor:"pointer",fontSize:14}}>←</button>
+      <button onClick={navNext} disabled={curIdx>=pidList.length-1} style={{padding:"6px 10px",background:"rgba(255,255,255,0.05)",border:"1px solid "+C2.border,color:C2.dim,borderRadius:6,cursor:"pointer",fontSize:14}}>→</button>
+      <button onClick={exportJson} style={{padding:"6px 12px",background:"rgba(74,158,255,0.15)",border:"1px solid "+C2.accent,color:C2.accent,borderRadius:6,cursor:"pointer",fontSize:11,fontWeight:600}}>Exportera JSON</button>
+    </div>
+
+    {ind&&<div style={{flex:1,overflow:"auto",padding:"12px 14px"}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+        <div style={{width:36,height:36,borderRadius:"50%",background:ind.sex==="M"?"rgba(74,158,255,0.2)":"rgba(255,107,157,0.2)",border:"1px solid "+(ind.sex==="M"?"#4a9eff":"#ff6b9d"),display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:600,color:ind.sex==="M"?"#4a9eff":"#ff6b9d",flexShrink:0}}>
+          {(ind.givenName||ind.name||"?").charAt(0)}
+        </div>
+        <div>
+          <div style={{fontWeight:600,fontSize:14}}>{ind.name}</div>
+          <div style={{fontSize:11,color:C2.dim}}>{ind.birthDate||"?"} · {ind.birthPlace||"okänd ort"}{manualLocs?"  ✎ manuell data":""}</div>
+        </div>
+        <div style={{marginLeft:"auto",fontSize:11,color:C2.dim}}>{curIdx+1} / {pidList.length}</div>
+      </div>
+
+      <canvas ref={mapRef} style={{width:"100%",height:200,display:"block",borderRadius:8,marginBottom:12,border:"1px solid "+C2.border}}/>
+
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+        <div style={{fontSize:11,color:C2.dim,letterSpacing:1,textTransform:"uppercase"}}>Platser ({locs.length})</div>
+        <button onClick={function(){setEditIdx(-1);}} style={{padding:"4px 10px",background:"rgba(74,158,255,0.15)",border:"1px solid "+C2.accent,color:C2.accent,borderRadius:4,fontSize:11,cursor:"pointer"}}>+ Lägg till</button>
+      </div>
+
+      {editIdx===-1&&<EditForm loc={{}} idx={-1} onSave={saveLoc} onCancel={function(){setEditIdx(null);}} onDelete={deleteLoc}/>}
+
+      <div style={{display:"flex",flexDirection:"column",gap:6}}>
+        {locs.map(function(loc,i){
+          var col=typeColors[loc.type]||"#888";
+          var label=typeLabels[loc.type]||loc.type||"";
+          var isManual=manualLocs&&manualLocs[i];
+          return <div key={i}>
+            <div onClick={function(){setEditIdx(editIdx===i?null:i);}} style={{background:editIdx===i?"rgba(74,158,255,0.08)":"rgba(255,255,255,0.03)",border:"1px solid "+(editIdx===i?C2.accent:C2.border),borderRadius:8,padding:"8px 12px",cursor:"pointer",display:"flex",alignItems:"center",gap:10}}>
+              <div style={{width:10,height:10,borderRadius:"50%",background:col,flexShrink:0}}/>
+              <div style={{flex:1}}>
+                <div style={{fontSize:13,fontWeight:500}}>{loc.place||"Okänd plats"}</div>
+                <div style={{fontSize:11,color:C2.dim}}>{loc.from||"?"}{loc.to&&loc.to!==loc.from?" – "+loc.to:""} · {label}{!loc.lat?" · ⚠ saknar koordinater":""}</div>
+              </div>
+              <div style={{fontSize:10,color:isManual?"#2ecc71":C2.dim}}>{isManual?"✎":"auto"}</div>
+            </div>
+            {editIdx===i&&<EditForm loc={loc} idx={i} onSave={saveLoc} onCancel={function(){setEditIdx(null);}} onDelete={deleteLoc}/>}
+          </div>;
+        })}
+      </div>
+
+      {locs.length===0&&<div style={{textAlign:"center",color:C2.dim,fontSize:12,padding:"30px 0"}}>
+        Inga platser hittade. Klicka "+ Lägg till" för att lägga till manuellt.<br/>
+        <span style={{fontSize:11}}>Automatiska platser hämtas från GEDCOM-filen (BIRT PLAC, RESI PLAC, DEAT PLAC).</span>
+      </div>}
+
+    </div>}
+
+    {!ind&&<div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",color:C2.dim,fontSize:13}}>Välj en person ovan för att redigera platser</div>}
+  </div>;
+}
+
+
 function GenealogyApp(){
   var _s=useState;var s1=_s(null),layout=s1[0],setLayout=s1[1];var s2=_s(null),sel=s2[0],setSel=s2[1];var sInsp=_s(null),inspPerson=sInsp[0],setInspPerson=sInsp[1];var s3=_s(""),search=s3[0],setSearch=s3[1];var s4=_s(new Set()),hlIds=s4[0],setHlIds=s4[1];var s5=_s(true),showUp=s5[0],setShowUp=s5[1];var s6=_s({}),photoTex=s6[0],setPhotoTex=s6[1];var s7=_s(false),isSample=s7[0],setIsSample=s7[1];var s8=_s(null),parsedData=s8[0],setParsedData=s8[1];var s9=_s(1970),sliderYear=s9[0],setSliderYear=s9[1];var s10=_s(false),isPlaying=s10[0],setIsPlaying=s10[1];var s11=_s(null),rangeStart=s11[0],setRangeStart=s11[1];var s12=_s(null),rangeEnd=s12[0],setRangeEnd=s12[1];
   var s14=_s({}),photoUrls=s14[0],setPhotoUrls=s14[1]; // {gedcomId: [{url, label},...]}
@@ -1135,7 +1350,7 @@ function GenealogyApp(){
   return (
     <div style={{width:"100%",height:"100vh",background:C.bg,fontFamily:"'Segoe UI',sans-serif",color:C.text,display:"flex",overflow:"hidden"}}>
       {!showUp&&parsedData&&(<div style={{width:64,flexShrink:0,background:C.panel,borderRight:"1px solid "+C.border,display:"flex",flexDirection:"column",alignItems:"stretch",zIndex:20}}>
-        {[["3d","3D","\u25A6"],["map","Karta","\u2316"],["pedigree","Antavla","\u229E"],["fan","Solfj\u00e4der","\u25D4"],["kb","Kartbild","\u2609"]].map(function(t){
+        {[["3d","3D","\u25A6"],["map","Karta","\u2316"],["pedigree","Antavla","\u229E"],["fan","Solfj\u00e4der","\u25D4"],["kb","Kartbild","\u2609"],["places","Platser","\u29BF"]].map(function(t){
           return <button key={t[0]} onClick={function(){setRightView(t[0]);}} title={t[1]} style={{padding:"10px 4px",background:rightView===t[0]?"rgba(74,158,255,0.15)":"transparent",border:"none",borderLeft:rightView===t[0]?"3px solid "+C.accent:"3px solid transparent",color:rightView===t[0]?C.accent:C.dim,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
             <span style={{fontSize:20,lineHeight:1}}>{t[2]}</span>
             <span style={{fontSize:8,letterSpacing:0.5,textTransform:"uppercase"}}>{t[1]}</span>
