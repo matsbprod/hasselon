@@ -1158,7 +1158,7 @@ function PhotoManager(props){
     setPhotoUrls(next);
     try{localStorage.setItem('slakttrads_photos',JSON.stringify(next));}catch(e){}
     var arr=next[editId]||[];
-    var first=arr.find(function(p){return p.type==="portrait";})||arr[0];
+    var first=arr.find(function(p){return p.type==="portrait"&&p.label&&(p.label.indexOf("vuxen")>=0||p.label.indexOf("adult")>=0);})||arr.find(function(p){return p.type==="portrait";})||arr[0];
     if(first&&first.url){
       var img=new Image();img.crossOrigin="anonymous";
       img.onload=function(){
@@ -1704,7 +1704,31 @@ function GenealogyApp(){
   var _s=useState;var s1=_s(null),layout=s1[0],setLayout=s1[1];var s2=_s(null),sel=s2[0],setSel=s2[1];var sInsp=_s(null),inspPerson=sInsp[0],setInspPerson=sInsp[1];var s3=_s(""),search=s3[0],setSearch=s3[1];var s4=_s(new Set()),hlIds=s4[0],setHlIds=s4[1];var s5=_s(true),showUp=s5[0],setShowUp=s5[1];var s6=_s({}),photoTex=s6[0],setPhotoTex=s6[1];var s7=_s(false),isSample=s7[0],setIsSample=s7[1];var s8=_s(null),parsedData=s8[0],setParsedData=s8[1];var s9=_s(1970),sliderYear=s9[0],setSliderYear=s9[1];var s10=_s(false),isPlaying=s10[0],setIsPlaying=s10[1];var s11=_s(null),rangeStart=s11[0],setRangeStart=s11[1];var s12=_s(null),rangeEnd=s12[0],setRangeEnd=s12[1];
   var s14=_s(function(){try{var r=localStorage.getItem('slakttrads_photos');return r?JSON.parse(r):{};}catch(e){return {};}}()),photoUrls=s14[0],setPhotoUrls=s14[1];
   var s15=_s(0),photoCount=s15[0],setPhotoCount=s15[1];
-  useEffect(function(){var c=0;for(var k in photoUrls)c+=(photoUrls[k]||[]).length;setPhotoCount(c);},[photoUrls]);
+  useEffect(function(){
+    var c=0;
+    for(var k in photoUrls){
+      var arr2=photoUrls[k]||[];
+      c+=arr2.length;
+      // Build 3D texture: prefer vuxen portrait
+      var first2=arr2.find(function(p){return p.type==="portrait"&&p.label&&(p.label.indexOf("vuxen")>=0||p.label.indexOf("adult")>=0);})||arr2.find(function(p){return p.type==="portrait";})||arr2[0];
+      if(first2&&first2.url&&typeof THREE!=="undefined"){
+        (function(id,src){
+          var img=new Image();img.crossOrigin="anonymous";
+          img.onload=function(){
+            var cv=document.createElement("canvas");cv.width=128;cv.height=128;
+            var ctx=cv.getContext("2d");
+            var sz=Math.min(img.width,img.height),sx=(img.width-sz)/2,sy=(img.height-sz)/2;
+            ctx.beginPath();ctx.arc(64,64,60,0,Math.PI*2);ctx.clip();
+            ctx.drawImage(img,sx,sy,sz,sz,0,0,128,128);
+            ctx.beginPath();ctx.arc(64,64,60,0,Math.PI*2);ctx.strokeStyle="#fff";ctx.lineWidth=3;ctx.stroke();
+            setPhotoTex(function(prev){var n={};for(var k2 in prev)n[k2]=prev[k2];n[id]=new THREE.CanvasTexture(cv);return n;});
+          };
+          img.src=src;
+        })(k,first2.url);
+      }
+    }
+    setPhotoCount(c);
+  },[photoUrls]);
   var s16=_s(0),viewTrigger=s16[0],setViewTrigger=s16[1];
   var s17=_s("3d"),rightView=s17[0],setRightView=s17[1];
   useEffect(function(){if(rightView==="3d"){setTimeout(function(){window.dispatchEvent(new Event("resize"));},60);}},[rightView]);
@@ -1841,7 +1865,7 @@ function GenealogyApp(){
           var ids=[fam.husband,fam.wife];
           for(var wi=0;wi<ids.length;wi++){
             var wPhotos=photoUrls[ids[wi]];
-            if(wPhotos){for(var wpi=0;wpi<wPhotos.length;wpi++){if(wPhotos[wpi].label.toLowerCase().indexOf("wedding")>=0){
+            if(wPhotos){for(var wpi=0;wpi<wPhotos.length;wpi++){var wl=wPhotos[wpi].label.toLowerCase();if(wPhotos[wpi].type==="wedding"||wl.indexOf("wedding")>=0||wl.indexOf("br\u00f6llop")>=0||wl.indexOf("brollop")>=0){
               // Create texture from wedding photo
               var wImg=document.createElement("img");wImg.crossOrigin="anonymous";
               (function(mx,mz,imgSrc){
@@ -1961,7 +1985,7 @@ function GenealogyApp(){
           <button onClick={function(){var cc=ctrl.current;if(cc.phi<0.2){cc.phi=1.0;cc.radius=80;}else{cc.phi=0.05;cc.theta=Math.PI/2;cc.radius=100;}if(upCamRef.current)upCamRef.current();}} style={{...PS,pointerEvents:"all",padding:"5px 10px",cursor:"pointer",fontSize:10,color:"#9775fa",fontWeight:600,border:"none"}} title="Toggle top/perspective view">&#8982; Top</button>
           <button onClick={function(){var cc=ctrl.current;cc.theta=0.3;cc.phi=1.0;cc.radius=80;cc.tx=0;cc.ty=2;cc.tz=layout?(layout.maxGeneration*22)/2:10;if(upCamRef.current)upCamRef.current();}} style={{...PS,pointerEvents:"all",padding:"5px 10px",cursor:"pointer",fontSize:10,color:"#ffa94d",fontWeight:600,border:"none"}} title="Reset camera to default view">&#8634; Reset</button>
         </div>
-        {panelPerson&&(<div style={{position:"absolute",bottom:8,left:8,width:280,background:C.panel+"f2",borderRadius:12,border:"1px solid "+C.border,zIndex:10,backdropFilter:"blur(12px)",overflow:"hidden"}}>
+        {panelPerson&&(<div style={{position:"absolute",bottom:8,left:8,width:420,background:C.panel+"f2",borderRadius:12,border:"1px solid "+C.border,zIndex:10,backdropFilter:"blur(12px)",overflow:"hidden"}}>
           <div style={{padding:"10px 12px 8px",background:"linear-gradient(135deg,"+(panelPerson.sex==="M"?C.male:panelPerson.sex==="F"?C.female:C.unknown)+"15,transparent)",borderBottom:"1px solid "+C.border}}>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
               {photoUrls[panelPerson.id]&&photoUrls[panelPerson.id].length>0?<img src={photoUrls[panelPerson.id][0].url} style={{width:44,height:44,borderRadius:8,objectFit:"cover",border:"2px solid "+(panelPerson.sex==="M"?"#4a9eff":"#ff6b9d")}}/>:isSample&&PM[panelPerson.id]?<AvPrev pid={panelPerson.id} sex={panelPerson.sex}/>:null}
@@ -1982,7 +2006,7 @@ function GenealogyApp(){
             <div style={{padding:"4px 12px 10px"}}>
               <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:4}}>
                 {photoUrls[panelPerson.id].map(function(ph,idx){return <div key={idx} style={{flexShrink:0,textAlign:"center"}}>
-                  <img src={ph.url} style={{width:70,height:70,borderRadius:6,objectFit:"cover",border:"1px solid "+C.border,cursor:"pointer"}} onClick={function(){window.open(ph.url,"_blank");}}/>
+                  <img src={ph.url} style={{width:44,height:44,borderRadius:5,objectFit:"cover",border:"1px solid "+C.border,cursor:"pointer"}} onClick={function(){window.open(ph.url,"_blank");}}/>
                   <div style={{fontSize:8,color:C.dim,marginTop:2}}>{ph.label}</div>
                 </div>;})}
               </div>
