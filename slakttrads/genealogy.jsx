@@ -699,7 +699,7 @@ function MapView(props) {
   var tileCache=useRef({});
   var layerRef=useRef("osm");
   var tileErrRef=useRef({ok:0,err:0});
-  var individuals=props.individuals,year=props.year,selId=props.selectedId,onSelect=props.onSelect,extraLocs=props.extraLocs||{},buildPersonLocations=props.buildPersonLocations;
+  var individuals=props.individuals,year=props.year,selId=props.selectedId,onSelect=props.onSelect,extraLocs=props.extraLocs||{},buildPersonLocations=props.buildPersonLocations,focusLat=props.focusLat,focusLon=props.focusLon,focusZoom=props.focusZoom;
   var s13=useState("osm"),mapLayer=s13[0],setMapLayer=s13[1];
 
   // Tile sources
@@ -879,6 +879,13 @@ function MapView(props) {
 
   useEffect(function(){layerRef.current=mapLayer;drawMap();},[mapLayer]);
   useEffect(function(){drawMap();},[drawMap]);
+  useEffect(function(){
+    if(focusLat&&focusLon){
+      var v=viewRef.current;
+      v.cx=focusLon;v.cy=focusLat;v.zoom=focusZoom||11;
+      drawMap();
+    }
+  },[focusLat,focusLon,focusZoom]);
 
   // Interaction
   useEffect(function(){
@@ -1733,6 +1740,25 @@ function GenealogyApp(){
   var s17=_s("3d"),rightView=s17[0],setRightView=s17[1];
   useEffect(function(){if(rightView==="3d"){setTimeout(function(){window.dispatchEvent(new Event("resize"));},60);}},[rightView]);
   var s18=_s("ancestors"),pedigreeMode=s18[0],setPedigreeMode=s18[1];
+  var s19=_s(null),mapFocus=s19[0],setMapFocus=s19[1]; // {lat,lon,zoom}
+
+  // Pick a smart zoom level for a place name
+  function geoZoomFor(placeName){
+    if(!placeName) return 10;
+    var p=placeName.toLowerCase();
+    // Big cities — zoom in closer
+    if(p.indexOf("göteborg")>=0||p.indexOf("stockholm")>=0||p.indexOf("malmö")>=0) return 12;
+    // Islands / municipalities on Orust size
+    if(p.indexOf("orust")>=0||p.indexOf("tjörn")>=0||p.indexOf("marstrand")>=0) return 10;
+    // Socken/parish level
+    if(p.indexOf("torp")>=0||p.indexOf("myckleby")>=0||p.indexOf("morlanda")>=0||p.indexOf("stala")>=0||p.indexOf("tegneby")>=0||p.indexOf("röra")>=0||p.indexOf("långelanda")>=0) return 12;
+    // Small farm/place
+    if(p.indexOf("gård")>=0||p.indexOf("säteri")>=0||p.indexOf("hem")>=0) return 13;
+    // Bohuslän / county level
+    if(p.indexOf("bohuslän")>=0||p.indexOf("västra götaland")>=0||p.indexOf("dalsland")>=0) return 9;
+    // Default — village/parish level
+    return 11;
+  }
   var cvRef=useRef(null),frameRef=useRef(null),meshRef=useRef({}),clickRef=useRef([]),camRef=useRef(null),rayRef=useRef(null),mouRef=useRef(null),upCamRef=useRef(null);
   var ctrl=useRef({down:false,right:false,sx:0,sy:0,px:0,py:0,theta:0.3,phi:1.0,radius:80,tx:0,ty:2,tz:10});
   var playRef=useRef(null);
@@ -1949,7 +1975,10 @@ function GenealogyApp(){
     <div style={{width:"100%",height:"100vh",background:C.bg,fontFamily:"'Segoe UI',sans-serif",color:C.text,display:"flex",overflow:"hidden"}}>
       {!showUp&&parsedData&&(<div style={{width:64,flexShrink:0,background:C.panel,borderRight:"1px solid "+C.border,display:"flex",flexDirection:"column",alignItems:"stretch",zIndex:20}}>
         {[["3d","3D","\u25A6"],["map","Karta","\u2316"],["pedigree","Antavla","\u229E"],["fan","Solfj\u00e4der","\u25D4"],["kb","Kartbild","\u2609"],["places","Platser","\u29BF"],["photos","Foton","📷"]].map(function(t){
-          return <button key={t[0]} onClick={function(){setRightView(t[0]);}} title={t[1]} style={{padding:"10px 4px",background:rightView===t[0]?"rgba(74,158,255,0.15)":"transparent",border:"none",borderLeft:rightView===t[0]?"3px solid "+C.accent:"3px solid transparent",color:rightView===t[0]?C.accent:C.dim,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+          return <button key={t[0]} onClick={function(){
+              setRightView(t[0]);
+              if(t[0]==="map"){var pp=inspPerson||sel;if(pp&&pp.birthPlace){var loc=lookupLocation(pp.birthPlace);if(loc)setMapFocus({lat:loc.lat,lon:loc.lon,zoom:geoZoomFor(pp.birthPlace)});}}
+            }} title={t[1]} style={{padding:"10px 4px",background:rightView===t[0]?"rgba(74,158,255,0.15)":"transparent",border:"none",borderLeft:rightView===t[0]?"3px solid "+C.accent:"3px solid transparent",color:rightView===t[0]?C.accent:C.dim,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
             <span style={{fontSize:20,lineHeight:1}}>{t[2]}</span>
             <span style={{fontSize:8,letterSpacing:0.5,textTransform:"uppercase"}}>{t[1]}</span>
           </button>;})}
@@ -2032,21 +2061,43 @@ function GenealogyApp(){
           {(rightView==="pedigree"||rightView==="fan")&&<div style={{display:"flex",borderLeft:"1px solid "+C.border}}><button onClick={function(){setPedigreeMode("ancestors");}} style={{padding:"8px 10px",fontSize:9,fontWeight:pedigreeMode==="ancestors"?700:400,color:pedigreeMode==="ancestors"?"#66d9a0":C.dim,background:pedigreeMode==="ancestors"?"rgba(102,217,160,0.08)":"transparent",border:"none",cursor:"pointer"}}>{"↑ Ancestors"}</button><button onClick={function(){setPedigreeMode("descendants");}} style={{padding:"8px 10px",fontSize:9,fontWeight:pedigreeMode==="descendants"?700:400,color:pedigreeMode==="descendants"?"#ff6b9d":C.dim,background:pedigreeMode==="descendants"?"rgba(255,107,157,0.08)":"transparent",border:"none",cursor:"pointer"}}>{"↓ Descendants"}</button></div>}
         </div>
         <div style={{flex:1,position:"relative",minHeight:0}}>
-          {rightView==="map"&&<MapView individuals={parsedData.individuals} year={sliderYear} rangeStart={effStart} rangeEnd={effEnd} selectedId={sel?sel.id:null} onSelect={mapSel} isSample={isSample} extraLocs={extraLocs} buildPersonLocations={buildPersonLocations}/>}
+          {rightView==="map"&&<MapView individuals={parsedData.individuals} year={sliderYear} rangeStart={effStart} rangeEnd={effEnd} selectedId={sel?sel.id:null} onSelect={mapSel} isSample={isSample} extraLocs={extraLocs} buildPersonLocations={buildPersonLocations} focusLat={mapFocus?mapFocus.lat:null} focusLon={mapFocus?mapFocus.lon:null} focusZoom={mapFocus?mapFocus.zoom:null}/>}
           {rightView==="pedigree"&&<PedigreeView individuals={parsedData.individuals} families={parsedData.families} selectedId={sel?sel.id:null} mode={pedigreeMode} onInspect={function(id){var p=parsedData.individuals[id];if(p){p.id=id;setInspPerson(p);}}} onSelect={function(id){var nd=layout.nodes.find(function(n){return n.id===id;});setSel(nd||null);}} photoUrls={photoUrls}/>}
           {rightView==="fan"&&<FanView individuals={parsedData.individuals} families={parsedData.families} selectedId={sel?sel.id:null} mode={pedigreeMode} onInspect={function(id){var p=parsedData.individuals[id];if(p){p.id=id;setInspPerson(p);}}} onSelect={function(id){var nd=layout.nodes.find(function(n){return n.id===id;});setSel(nd||null);}} photoUrls={photoUrls}/>}
-          {rightView==="kb"&&(<div style={{width:"100%",height:"100%",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16,background:C.bg,color:C.dim}}>
+          {rightView==="kb"&&(<div style={{width:"100%",height:"100%",position:"relative",background:C.bg}}>
+            <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100%",gap:16,color:C.dim}}>
               <div style={{fontSize:40}}>☉</div>
               <div style={{fontSize:14,fontWeight:600,color:C.text}}>Kartbild.com historiska kartor</div>
-              <div style={{fontSize:12,textAlign:"center",maxWidth:300,lineHeight:1.6}}>Välj en person i 3D-vyn eller klicka på en plats på kartan för att öppna historisk karta</div>
-              {sel&&sel.birthPlace&&lookupLocation(sel.birthPlace)&&(<div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"center",marginTop:8}}>
+              <div style={{fontSize:12,textAlign:"center",maxWidth:300,lineHeight:1.6}}>Välj en person i 3D-vyn för att öppna historisk karta för deras födelseort</div>
+              {panelPerson&&panelPerson.birthPlace&&lookupLocation(panelPerson.birthPlace)&&(<div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"center",marginTop:8}}>
                 {[["📜 Ekonomisk","0x10000"],["✈ Flygfoto 1960","0x100"],["✈ Flygfoto 1975","0x200"],["🗺 Topo","0x1000"]].map(function(kb){
-                  var loc=lookupLocation(sel.birthPlace);
+                  var loc=lookupLocation(panelPerson.birthPlace);
                   return <a key={kb[0]} href={"https://kartbild.com/#15/"+loc.lat.toFixed(4)+"/"+loc.lon.toFixed(4)+"/"+kb[1]} target="_blank" style={{padding:"10px 16px",background:"rgba(74,158,255,0.15)",border:"1px solid rgba(74,158,255,0.4)",borderRadius:8,color:C.accent,textDecoration:"none",fontSize:12,cursor:"pointer"}}>{kb[0]}</a>;
                 })}
               </div>)}
-              {sel&&(!sel.birthPlace||!lookupLocation(sel.birthPlace))&&<div style={{fontSize:11,color:C.dim,marginTop:8}}>Vald person: {sel.name} — födelseort ej i geocoding-registret</div>}
+              {panelPerson&&(!panelPerson.birthPlace||!lookupLocation(panelPerson.birthPlace))&&<div style={{fontSize:11,color:C.dim,marginTop:8}}>{panelPerson.name} — födelseort ej i geocoding-registret</div>}
+              {!panelPerson&&<div style={{fontSize:11,color:C.dim,marginTop:8}}>Välj en person i 3D-vyn</div>}
+            </div>
+            {panelPerson&&(<div style={{position:"absolute",bottom:8,left:8,width:640,background:C.panel+"f5",borderRadius:14,border:"1px solid "+C.border,zIndex:10,backdropFilter:"blur(14px)",overflow:"hidden"}}>
+              <div style={{padding:"12px 14px 10px",background:"linear-gradient(135deg,"+(panelPerson.sex==="M"?C.male:panelPerson.sex==="F"?C.female:C.unknown)+"15,transparent)",borderBottom:"1px solid "+C.border}}>
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  {photoUrls[panelPerson.id]&&photoUrls[panelPerson.id].length>0?<img src={photoUrls[panelPerson.id][0].url} style={{width:56,height:56,borderRadius:10,objectFit:"cover",border:"2px solid "+(panelPerson.sex==="M"?"#4a9eff":"#ff6b9d"),flexShrink:0}}/>:null}
+                  <div style={{flex:1}}><div style={{fontSize:9,letterSpacing:2,color:C.dim,textTransform:"uppercase"}}>{GL[panelPerson.generation]||""}</div><div style={{fontSize:17,fontWeight:600}}>{panelPerson.name}</div></div>
+                </div>
+              </div>
+              <div style={{padding:"8px 14px 10px",fontSize:12,display:"grid",gap:4}}>
+                {panelPerson.birthDate&&<div><span style={{color:C.dim}}>Född </span>{panelPerson.birthDate}{panelPerson.birthPlace?" · "+panelPerson.birthPlace:""}</div>}
+                {panelPerson.deathDate&&<div><span style={{color:C.dim}}>Död </span>{panelPerson.deathDate}{panelPerson.deathPlace?" · "+panelPerson.deathPlace:""}</div>}
+              </div>
+              {photoUrls[panelPerson.id]&&photoUrls[panelPerson.id].length>0&&(
+                <div style={{padding:"4px 14px 12px"}}>
+                  <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:4}}>
+                    {(function(){var phs=photoUrls[panelPerson.id];return phs.map(function(ph,pidx){var pt2=({portrait:"#4a9eff",wedding:"#ff6b9d",place:"#66d9a0",document:"#ffa94d",group:"#9775fa"})[ph.type]||"#8899aa";return(<div key={pidx} style={{flexShrink:0,cursor:"pointer"}} onClick={function(){setPanelLightbox({photos:phs,idx:pidx});}}><img src={ph.url} style={{width:54,height:54,borderRadius:6,objectFit:"cover",border:"2px solid "+pt2,display:"block"}} onError={function(e){e.target.style.opacity=0.3;}}/><div style={{fontSize:8,color:C.dim,marginTop:2,maxWidth:54,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{ph.label||ph.type}</div></div>);});})()}
+                  </div>
+                </div>
+              )}
             </div>)}
+          </div>)}
           {rightView==="places"&&<PlacesEditor
             individuals={parsedData?parsedData.individuals:{}}
             families={parsedData?parsedData.families:{}}
