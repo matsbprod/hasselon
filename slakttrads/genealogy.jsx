@@ -1052,9 +1052,87 @@ function PhotoManager(props){
   var s8=_s(false),showGHConfig=s8[0],setShowGHConfig=s8[1];
   var ghInit=function(){try{var r=localStorage.getItem('slakttrads_gh');return r?JSON.parse(r):{token:"",repo:"",branch:"main"};}catch(e){return{token:"",repo:"",branch:"main"};}};
   var s9=_s(ghInit()),ghConfig=s9[0],setGhConfig=s9[1];
+  var s10=_s(false),syncing=s10[0],setSyncing=s10[1];
+  var s11=_s(null),syncMsg=s11[0],setSyncMsg=s11[1];
   var ghReady=!!(ghConfig.token&&ghConfig.repo);
 
   useEffect(function(){if(selectedId)setEditId(selectedId);},[selectedId]);
+
+  // Auto-sync when config becomes ready
+  useEffect(function(){
+    if(ghReady) syncFromGitHub(ghConfig);
+  },[ghConfig.token,ghConfig.repo]);
+
+  function parsePhotoMeta(filename){
+    // Pattern: {gedcomId}_{category}_{seq}_{description}.ext
+    // e.g. I0042_foto_barn_1_ingrid_ca1910.svg
+    var base=filename.replace(/\.[^.]+$/,"");
+    var parts=base.split("_");
+    if(parts.length<3) return {gedcomId:null,type:"other",label:base};
+    var gedcomId="@"+parts[0]+"@";
+    var cat=parts[1]+(parts[2]&&isNaN(parts[2])?"_"+parts[2]:"");
+    var seq=parts.find(function(p){return !isNaN(p)&&p.length<4;})||"1";
+    var descParts=parts.slice(parts.indexOf(seq)+1);
+    var label=descParts.join(" ").replace(/ca /g,"ca ").trim()||base;
+    // Map category to type
+    var typeMap={foto_barn:"portrait",foto_vuxen:"portrait",foto_aldre:"portrait",
+      foto_brollop:"wedding",plats:"place",kyrkbok_fod:"document",
+      kyrkbok_husforh:"document",kyrkbok_vigsel:"document",kyrkbok_dod:"document"};
+    var type=typeMap[cat]||"other";
+    // Extract year from description
+    var yearMatch=base.match(/_(1[0-9]{3}|2[0-9]{3})/);
+    var year=yearMatch?yearMatch[1]:"";
+    return {gedcomId:gedcomId,type:type,label:label,year:year,seq:parseInt(seq)||1};
+  }
+
+  function syncFromGitHub(cfg){
+    if(!cfg||!cfg.token||!cfg.repo) return;
+    setSyncing(true);setSyncMsg(null);
+    var headers={"Authorization":"token "+cfg.token,"Accept":"application/vnd.github.v3+json"};
+    var branch=cfg.branch||"main";
+    // Use git trees API to list all files under photos/ recursively
+    fetch("https://api.github.com/repos/"+cfg.repo+"/git/trees/"+branch+"?recursive=1",{headers:headers})
+      .then(function(r){return r.ok?r.json():Promise.reject(r.status);})
+      .then(function(data){
+        var items=(data.tree||[]).filter(function(f){
+          return f.type==="blob"&&f.path.indexOf("photos/")===0&&f.path.match(/\.(jpg|jpeg|png|webp|svg|gif)$/i);
+        });
+        if(!items.length){setSyncing(false);setSyncMsg("Inga bilder hittades i photos/");return;}
+        var newUrls={};
+        items.forEach(function(item){
+          var filename=item.path.split("/").pop();
+          var meta=parsePhotoMeta(filename);
+          if(!meta.gedcomId) return;
+          var rawUrl="https://raw.githubusercontent.com/"+cfg.repo+"/"+branch+"/"+item.path;
+          if(!newUrls[meta.gedcomId])newUrls[meta.gedcomId]=[];
+          // Avoid duplicates
+          var exists=newUrls[meta.gedcomId].some(function(p){return p.url===rawUrl;});
+          if(!exists) newUrls[meta.gedcomId].push({url:rawUrl,label:meta.label,type:meta.type,year:meta.year,source:"GitHub: "+item.path,_seq:meta.seq});
+        });
+        // Sort each person's photos by seq
+        Object.keys(newUrls).forEach(function(k){
+          newUrls[k].sort(function(a,b){return (a._seq||0)-(b._seq||0);});
+        });
+        // Merge with existing localStorage photos (prefer GitHub)
+        setPhotoUrls(function(prev){
+          var merged=Object.assign({},prev);
+          Object.keys(newUrls).forEach(function(k){
+            // Keep any locally-added photos not in GitHub, prepend GitHub ones
+            var local=(merged[k]||[]).filter(function(p){return p.url.indexOf("raw.githubusercontent")<0;});
+            merged[k]=newUrls[k].concat(local);
+          });
+          try{localStorage.setItem('slakttrads_photos',JSON.stringify(merged));}catch(e){}
+          return merged;
+        });
+        var total=items.length;
+        var persons=Object.keys(newUrls).length;
+        setSyncing(false);setSyncMsg("\u2713 "+total+" bilder f\u00f6r "+persons+" personer synkade");
+      })
+      .catch(function(e){
+        setSyncing(false);
+        setSyncMsg("Fel: "+(typeof e==="string"?e:e.message||"okänt fel")+" — kontrollera token och repo");
+      });
+  }
 
   if(!hasParsedData) return React.createElement('div',{style:{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",color:"#8899aa",fontSize:13,gap:12,height:"100%",background:"#0d1117"}},
     React.createElement('div',{style:{fontSize:40}},"\uD83D\uDCF7"),
@@ -1072,6 +1150,7 @@ function PhotoManager(props){
   function saveGhConfig(cfg){
     setGhConfig(cfg);
     try{localStorage.setItem('slakttrads_gh',JSON.stringify(cfg));}catch(e){}
+    if(cfg.token&&cfg.repo) syncFromGitHub(cfg);
   }
 
   function savePhotos(next){
@@ -1249,6 +1328,9 @@ function PhotoManager(props){
             React.createElement('div',{style:{fontSize:10,color:C2.dim}},(ind.birthDate?ind.birthDate+" \u00b7 ":"")+photos.length+" foto"+(photos.length!==1?"n":""))
           )
           :React.createElement('div',{style:{flex:1,fontSize:12,color:C2.dim}},"V\u00e4lj en person till v\u00e4nster"),
+        syncing&&React.createElement('div',{style:{fontSize:10,color:"#4a9eff",display:"flex",alignItems:"center",gap:4}},
+          React.createElement('span',{style:{display:"inline-block",animation:"spin 1s linear infinite"}},"\u23F3")," Synkar..."
+        ),
         React.createElement('button',{onClick:function(){setShowGHConfig(!showGHConfig);},title:"GitHub-inst\u00e4llningar",
           style:{padding:"4px 8px",background:ghReady?"rgba(102,217,160,0.15)":"rgba(255,165,0,0.15)",border:"1px solid "+(ghReady?"#66d9a0":"#ffa94d"),borderRadius:6,color:ghReady?"#66d9a0":"#ffa94d",cursor:"pointer",fontSize:11,fontWeight:600}},
           "\u2699\uFE0F GitHub"+(ghReady?" \u2713":""))
@@ -1265,8 +1347,15 @@ function PhotoManager(props){
           );
         }),
         React.createElement('div',{style:{fontSize:9,color:C2.dim,marginTop:4}},
-          "Token beh\u00f6ver repo-scope. Bilder sparas i photos/ i repot."+(ghReady?" \u2713 Redo att ladda upp till "+ghConfig.repo:" " )
-        )
+          "Token beh\u00f6ver repo-scope. Bilder sparas i photos/. SVG, JPG, PNG st\u00f6ds."
+        ),
+        ghReady&&React.createElement('button',{
+          onClick:function(){syncFromGitHub(ghConfig);},
+          disabled:syncing,
+          style:{marginTop:6,padding:"5px 12px",background:syncing?"rgba(255,255,255,0.05)":"rgba(74,158,255,0.15)",border:"1px solid "+(syncing?C2.border:"#4a9eff"),borderRadius:6,color:syncing?C2.dim:"#4a9eff",cursor:syncing?"default":"pointer",fontSize:10,fontWeight:600,width:"100%"}},
+          syncing?"\u23F3 H\u00e4mtar bilder fr\u00e5n GitHub...":"\uD83D\uDD04 Synka bilder fr\u00e5n GitHub"
+        ),
+        syncMsg&&React.createElement('div',{style:{fontSize:10,color:syncMsg.indexOf("Fel")===0?"#ff6b6b":"#66d9a0",marginTop:4}},syncMsg)
       ),
       /* Upload error */
       uploadErr&&React.createElement('div',{style:{padding:"6px 12px",background:"rgba(255,80,80,0.15)",borderBottom:"1px solid rgba(255,80,80,0.3)",fontSize:11,color:"#ff6b6b",flexShrink:0}},
