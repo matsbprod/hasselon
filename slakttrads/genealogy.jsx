@@ -1701,7 +1701,7 @@ function PlacesEditor({individuals,families,extraLocs,setExtraLocs,selectedId,bu
 
 
 function GenealogyApp(){
-  var _s=useState;var s1=_s(null),layout=s1[0],setLayout=s1[1];var s2=_s(null),sel=s2[0],setSel=s2[1];var sInsp=_s(null),inspPerson=sInsp[0],setInspPerson=sInsp[1];var s3=_s(""),search=s3[0],setSearch=s3[1];var s4=_s(new Set()),hlIds=s4[0],setHlIds=s4[1];var s5=_s(true),showUp=s5[0],setShowUp=s5[1];var s6=_s({}),photoTex=s6[0],setPhotoTex=s6[1];var s7=_s(false),isSample=s7[0],setIsSample=s7[1];var s8=_s(null),parsedData=s8[0],setParsedData=s8[1];var s9=_s(1970),sliderYear=s9[0],setSliderYear=s9[1];var s10=_s(false),isPlaying=s10[0],setIsPlaying=s10[1];var s11=_s(null),rangeStart=s11[0],setRangeStart=s11[1];var s12=_s(null),rangeEnd=s12[0],setRangeEnd=s12[1];
+  var _s=useState;var s1=_s(null),layout=s1[0],setLayout=s1[1];var s2=_s(null),sel=s2[0],setSel=s2[1];var sInsp=_s(null),inspPerson=sInsp[0],setInspPerson=sInsp[1];var sLB=_s(null),panelLightbox=sLB[0],setPanelLightbox=sLB[1];var s3=_s(""),search=s3[0],setSearch=s3[1];var s4=_s(new Set()),hlIds=s4[0],setHlIds=s4[1];var s5=_s(true),showUp=s5[0],setShowUp=s5[1];var s6=_s({}),photoTex=s6[0],setPhotoTex=s6[1];var s7=_s(false),isSample=s7[0],setIsSample=s7[1];var s8=_s(null),parsedData=s8[0],setParsedData=s8[1];var s9=_s(1970),sliderYear=s9[0],setSliderYear=s9[1];var s10=_s(false),isPlaying=s10[0],setIsPlaying=s10[1];var s11=_s(null),rangeStart=s11[0],setRangeStart=s11[1];var s12=_s(null),rangeEnd=s12[0],setRangeEnd=s12[1];
   var s14=_s(function(){try{var r=localStorage.getItem('slakttrads_photos');return r?JSON.parse(r):{};}catch(e){return {};}}()),photoUrls=s14[0],setPhotoUrls=s14[1];
   var s15=_s(0),photoCount=s15[0],setPhotoCount=s15[1];
   useEffect(function(){
@@ -1869,21 +1869,18 @@ function GenealogyApp(){
               // Create texture from wedding photo
               var wImg=document.createElement("img");wImg.crossOrigin="anonymous";
               (function(mx,mz,imgSrc){
-                var img2=new Image();
-                img2.onload=function(){
-                  var cv2=document.createElement("canvas");cv2.width=128;cv2.height=128;
-                  var ctx2=cv2.getContext("2d");
-                  var sz2=Math.min(img2.width,img2.height),sx2=(img2.width-sz2)/2,sy2=(img2.height-sz2)/2;
-                  // Heart-shaped or rounded frame
-                  ctx2.beginPath();ctx2.roundRect(4,4,120,120,16);ctx2.clip();
-                  ctx2.drawImage(img2,sx2,sy2,sz2,sz2,0,0,128,128);
-                  ctx2.beginPath();ctx2.roundRect(4,4,120,120,16);ctx2.strokeStyle="#ffd700";ctx2.lineWidth=4;ctx2.stroke();
-                  var wTex=new THREE.CanvasTexture(cv2);
+                var loader=new THREE.TextureLoader();
+                loader.crossOrigin="anonymous";
+                loader.load(imgSrc,function(wTex){
+                  wTex.colorSpace=THREE.SRGBColorSpace||THREE.LinearEncoding;
                   var wSpr=new THREE.Sprite(new THREE.SpriteMaterial({map:wTex,transparent:true,depthTest:false}));
-                  wSpr.position.set(mx,3.2,mz);wSpr.scale.set(2.0,2.0,1);
+                  wSpr.position.set(mx,3.2,mz);wSpr.scale.set(2.2,2.2,1);
                   scene.add(wSpr);
-                };
-                img2.src=imgSrc;
+                },undefined,function(){
+                  // fallback: gold ring on error
+                  var rng2=new THREE.Mesh(new THREE.SphereGeometry(0.25,10,10),new THREE.MeshStandardMaterial({color:0xffd700,emissive:new THREE.Color(0xffd700),emissiveIntensity:0.5,roughness:0.2,metalness:0.9}));
+                  rng2.position.set(mx,3.2,mz);scene.add(rng2);
+                });
               })(midSX,spZ,wPhotos[wpi].url);
               weddingTex=true;break;
             }}}
@@ -1985,33 +1982,47 @@ function GenealogyApp(){
           <button onClick={function(){var cc=ctrl.current;if(cc.phi<0.2){cc.phi=1.0;cc.radius=80;}else{cc.phi=0.05;cc.theta=Math.PI/2;cc.radius=100;}if(upCamRef.current)upCamRef.current();}} style={{...PS,pointerEvents:"all",padding:"5px 10px",cursor:"pointer",fontSize:10,color:"#9775fa",fontWeight:600,border:"none"}} title="Toggle top/perspective view">&#8982; Top</button>
           <button onClick={function(){var cc=ctrl.current;cc.theta=0.3;cc.phi=1.0;cc.radius=80;cc.tx=0;cc.ty=2;cc.tz=layout?(layout.maxGeneration*22)/2:10;if(upCamRef.current)upCamRef.current();}} style={{...PS,pointerEvents:"all",padding:"5px 10px",cursor:"pointer",fontSize:10,color:"#ffa94d",fontWeight:600,border:"none"}} title="Reset camera to default view">&#8634; Reset</button>
         </div>
-        {panelPerson&&(<div style={{position:"absolute",bottom:8,left:8,width:420,background:C.panel+"f2",borderRadius:12,border:"1px solid "+C.border,zIndex:10,backdropFilter:"blur(12px)",overflow:"hidden"}}>
-          <div style={{padding:"10px 12px 8px",background:"linear-gradient(135deg,"+(panelPerson.sex==="M"?C.male:panelPerson.sex==="F"?C.female:C.unknown)+"15,transparent)",borderBottom:"1px solid "+C.border}}>
-            <div style={{display:"flex",alignItems:"center",gap:8}}>
-              {photoUrls[panelPerson.id]&&photoUrls[panelPerson.id].length>0?<img src={photoUrls[panelPerson.id][0].url} style={{width:44,height:44,borderRadius:8,objectFit:"cover",border:"2px solid "+(panelPerson.sex==="M"?"#4a9eff":"#ff6b9d")}}/>:isSample&&PM[panelPerson.id]?<AvPrev pid={panelPerson.id} sex={panelPerson.sex}/>:null}
-              <div style={{flex:1}}><div style={{fontSize:9,letterSpacing:2,color:C.dim,textTransform:"uppercase"}}>{GL[panelPerson.generation]||"Gen "+(sel.generation+1)}</div><div style={{fontSize:15,fontWeight:600}}>{panelPerson.name}</div></div>
-              <button onClick={function(){setInspPerson(null);setSel(null);}} style={{background:"rgba(255,255,255,0.06)",border:"none",color:C.dim,cursor:"pointer",fontSize:14,width:24,height:24,borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center"}}>x</button>
+        {panelPerson&&(<div style={{position:"absolute",bottom:8,left:8,width:640,background:C.panel+"f5",borderRadius:14,border:"1px solid "+C.border,zIndex:10,backdropFilter:"blur(14px)",overflow:"hidden"}}>
+          <div style={{padding:"12px 14px 10px",background:"linear-gradient(135deg,"+(panelPerson.sex==="M"?C.male:panelPerson.sex==="F"?C.female:C.unknown)+"15,transparent)",borderBottom:"1px solid "+C.border}}>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              {photoUrls[panelPerson.id]&&photoUrls[panelPerson.id].length>0?<img src={photoUrls[panelPerson.id][0].url} style={{width:56,height:56,borderRadius:10,objectFit:"cover",border:"2px solid "+(panelPerson.sex==="M"?"#4a9eff":"#ff6b9d"),flexShrink:0}}/>:isSample&&PM[panelPerson.id]?<AvPrev pid={panelPerson.id} sex={panelPerson.sex}/>:null}
+              <div style={{flex:1}}><div style={{fontSize:9,letterSpacing:2,color:C.dim,textTransform:"uppercase"}}>{GL[panelPerson.generation]||"Gen "+(sel.generation+1)}</div><div style={{fontSize:17,fontWeight:600}}>{panelPerson.name}</div></div>
+              <button onClick={function(){setInspPerson(null);setSel(null);}} style={{background:"rgba(255,255,255,0.06)",border:"none",color:C.dim,cursor:"pointer",fontSize:14,width:28,height:28,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>✕</button>
             </div>
           </div>
-          <div style={{padding:"6px 12px 10px",fontSize:11,display:"grid",gap:3}}>
-            {panelPerson.birthDate&&<div><span style={{color:C.dim}}>Born </span>{panelPerson.birthDate}{panelPerson.birthPlace?" · "+panelPerson.birthPlace:""}</div>}
+          <div style={{padding:"8px 14px 10px",fontSize:12,display:"grid",gap:4}}>
+            {panelPerson.birthDate&&<div><span style={{color:C.dim}}>Född </span>{panelPerson.birthDate}{panelPerson.birthPlace?" · "+panelPerson.birthPlace:""}</div>}
               {panelPerson.birthPlace&&lookupLocation(panelPerson.birthPlace)&&(<div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:4}}>
                 <a href={kartbildUrl((lookupLocation(panelPerson.birthPlace)||{}).lat,(lookupLocation(panelPerson.birthPlace)||{}).lon,0x10000)} target="_blank" style={{fontSize:9,padding:"2px 6px",background:"rgba(255,200,50,0.15)",border:"1px solid rgba(255,200,50,0.4)",borderRadius:3,color:"#ffd060",textDecoration:"none"}}>📜 Ekon.karta</a>
-                                <a href={kartbildUrl((lookupLocation(panelPerson.birthPlace)||{}).lat,(lookupLocation(panelPerson.birthPlace)||{}).lon,0x100)} target="_blank" style={{fontSize:9,padding:"2px 6px",background:"rgba(100,180,255,0.15)",border:"1px solid rgba(100,180,255,0.4)",borderRadius:3,color:"#64b4ff",textDecoration:"none"}}>✈ Flygfoto 1960</a>
+                <a href={kartbildUrl((lookupLocation(panelPerson.birthPlace)||{}).lat,(lookupLocation(panelPerson.birthPlace)||{}).lon,0x100)} target="_blank" style={{fontSize:9,padding:"2px 6px",background:"rgba(100,180,255,0.15)",border:"1px solid rgba(100,180,255,0.4)",borderRadius:3,color:"#64b4ff",textDecoration:"none"}}>✈ Flygfoto 1960</a>
                 <a href={kartbildUrl((lookupLocation(panelPerson.birthPlace)||{}).lat,(lookupLocation(panelPerson.birthPlace)||{}).lon,0x200)} target="_blank" style={{fontSize:9,padding:"2px 6px",background:"rgba(100,180,255,0.15)",border:"1px solid rgba(100,180,255,0.4)",borderRadius:3,color:"#64b4ff",textDecoration:"none"}}>✈ Flygfoto 1975</a>
               </div>)}
-              {panelPerson.deathDate&&<div><span style={{color:C.dim}}>Died </span>{panelPerson.deathDate}{panelPerson.deathPlace?" · "+panelPerson.deathPlace:""}</div>}
+              {panelPerson.deathDate&&<div><span style={{color:C.dim}}>Död </span>{panelPerson.deathDate}{panelPerson.deathPlace?" · "+panelPerson.deathPlace:""}</div>}
           </div>
           {photoUrls[panelPerson.id]&&photoUrls[panelPerson.id].length>0&&(
-            <div style={{padding:"4px 12px 10px"}}>
+            <div style={{padding:"4px 14px 12px"}}>
               <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:4}}>
-                {photoUrls[panelPerson.id].map(function(ph,idx){return <div key={idx} style={{flexShrink:0,textAlign:"center"}}>
-                  <img src={ph.url} style={{width:44,height:44,borderRadius:5,objectFit:"cover",border:"1px solid "+C.border,cursor:"pointer"}} onClick={function(){window.open(ph.url,"_blank");}}/>
-                  <div style={{fontSize:8,color:C.dim,marginTop:2}}>{ph.label}</div>
-                </div>;})}
+                {(function(){var phs=photoUrls[panelPerson.id];return phs.map(function(ph,pidx){var pt=({portrait:"#4a9eff",wedding:"#ff6b9d",place:"#66d9a0",document:"#ffa94d",group:"#9775fa"})[ph.type]||"#8899aa";return(<div key={pidx} style={{flexShrink:0,textAlign:"center",cursor:"pointer"}}
+                  onClick={function(){setPanelLightbox({photos:phs,idx:pidx});}}>
+                  <img src={ph.url} style={{width:54,height:54,borderRadius:6,objectFit:"cover",border:"2px solid "+pt,display:"block"}} onError={function(e){e.target.style.opacity=0.3;}}/>
+                  <div style={{fontSize:8,color:C.dim,marginTop:2,maxWidth:54,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{ph.label||ph.type}</div>
+                </div>);});})()}
               </div>
             </div>
           )}
+        </div>)}
+        {panelLightbox&&(<div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.88)",zIndex:50,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}
+          onClick={function(){setPanelLightbox(null);}}>
+          <button onClick={function(){setPanelLightbox(null);}} style={{position:"absolute",top:12,right:12,background:"rgba(255,255,255,0.1)",border:"none",color:"#fff",fontSize:18,width:34,height:34,borderRadius:7,cursor:"pointer"}}>✕</button>
+          {panelLightbox.idx>0&&<button onClick={function(e){e.stopPropagation();setPanelLightbox(function(lb){return{photos:lb.photos,idx:lb.idx-1};});}} style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.1)",border:"none",color:"#fff",fontSize:28,width:44,height:44,borderRadius:8,cursor:"pointer"}}>‹</button>}
+          {panelLightbox.idx<panelLightbox.photos.length-1&&<button onClick={function(e){e.stopPropagation();setPanelLightbox(function(lb){return{photos:lb.photos,idx:lb.idx+1};});}} style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.1)",border:"none",color:"#fff",fontSize:28,width:44,height:44,borderRadius:8,cursor:"pointer"}}>›</button>}
+          <img src={panelLightbox.photos[panelLightbox.idx].url} style={{maxWidth:"85vw",maxHeight:"75vh",objectFit:"contain",borderRadius:10,border:"1px solid #333"}} onClick={function(e){e.stopPropagation();}}/>
+          <div style={{marginTop:10,textAlign:"center"}} onClick={function(e){e.stopPropagation();}}>
+            <div style={{color:"#fff",fontSize:14,fontWeight:600}}>{panelLightbox.photos[panelLightbox.idx].label||"Foto "+(panelLightbox.idx+1)}</div>
+            {panelLightbox.photos[panelLightbox.idx].year&&<div style={{color:"#8899aa",fontSize:12,marginTop:2}}>{panelLightbox.photos[panelLightbox.idx].year}</div>}
+            {panelLightbox.photos[panelLightbox.idx].source&&<div style={{color:"#8899aa",fontSize:11,marginTop:1}}>Källa: {panelLightbox.photos[panelLightbox.idx].source}</div>}
+            <div style={{color:"#555",fontSize:11,marginTop:3}}>{panelLightbox.idx+1} / {panelLightbox.photos.length}</div>
+          </div>
         </div>)}
       </div>)}
       
