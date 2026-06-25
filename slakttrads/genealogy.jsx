@@ -847,7 +847,9 @@ function MapView(props) {
           ctx.fillText("Laddar "+srcDef.name+"...",W-6,7);
           if(wmsCache!=="loading"){
             tileCache.current[wmsKey]="loading";
-            // Debounce: wait 200ms after last pan/zoom before fetching
+            // Safety: clear stuck loading entry after 10s so it can retry
+            setTimeout(function(){if(tileCache.current[wmsKey]==="loading")delete tileCache.current[wmsKey];},10000);
+            // Debounce: wait 250ms after last pan/zoom before fetching
             if(wmsDebounceRef.current)clearTimeout(wmsDebounceRef.current);
             wmsDebounceRef.current=setTimeout(function(){
               wmsDebounceRef.current=null;
@@ -862,7 +864,14 @@ function MapView(props) {
                 return resp.blob().then(function(blob){
                   var url2=URL.createObjectURL(blob);
                   var img2=new Image();img2.loaded=false;
-                  img2.onload=function(){img2.loaded=true;tileCache.current[wmsKey]=img2;drawMap();};
+                  img2.onload=function(){
+                    img2.loaded=true;
+                    tileCache.current[wmsKey]=img2;
+                    // Keep only 5 WMS images to avoid memory bloat
+                    var wmsKeys=Object.keys(tileCache.current).filter(function(k){return k.indexOf('/wms/')>=0&&tileCache.current[k]&&tileCache.current[k].loaded;});
+                    if(wmsKeys.length>5){delete tileCache.current[wmsKeys[0]];}
+                    drawMap();
+                  };
                   img2.src=url2;
                 });
               }).catch(function(e){delete tileCache.current[wmsKey];console.error("WMS:",e);});
@@ -1017,6 +1026,9 @@ function MapView(props) {
     var cv=cvRef.current;if(!cv)return;
     var v=viewRef.current;
     function clearWmsCache(){
+      // Cancel any pending debounced fetch
+      if(wmsDebounceRef.current){clearTimeout(wmsDebounceRef.current);wmsDebounceRef.current=null;}
+      // Remove all WMS entries including stuck "loading" strings
       var tc=tileCache.current;
       Object.keys(tc).forEach(function(k){if(k.indexOf('/wms/')>=0)delete tc[k];});
     }
