@@ -716,7 +716,7 @@ function FanView(props){
 }
 
 function MapView(props) {
-  var cvRef=useRef(null), clickAreas=useRef([]);
+  var cvRef=useRef(null), clickAreas=useRef([]), wmsDebounceRef=useRef(null);
   var viewRef=useRef({cx:11.75,cy:58.15,zoom:9,dragging:false,sx:0,sy:0,scx:0,scy:0});
   var tileCache=useRef({});
   var layerRef=useRef("osm");
@@ -821,50 +821,53 @@ function MapView(props) {
 
     var srcDef=TILE_SOURCES[layer];
     if(srcDef&&srcDef.type==="wms"){
-      // WMS: single image for whole viewport
       var bbox=wmsBbox(v,W,H);
       var wmsUrl=srcDef.wmsUrl(bbox,W,H);
       if(!wmsUrl){
         ctx.fillStyle="rgba(40,40,40,0.85)";ctx.fillRect(0,0,W,H);
         ctx.fillStyle="#ffa94d";ctx.font="bold 12px Arial";ctx.textAlign="center";ctx.textBaseline="middle";
-        ctx.fillText("Lantmäteriets flygfoton kräver API-nyckel — klicka \u2699\uFE0F LM-nyckel",W/2,H/2);
+        ctx.fillText("Lantmäteriets flygfoton kräver API-nyckel",W/2,H/2);
       } else {
-        // Use full bbox as key so different views get separate cache entries
         var wmsKey=layer+"/wms/"+bbox;
         var wmsCache=tileCache.current[wmsKey];
-        if(wmsCache==="loading"){
-          ctx.fillStyle="#dce8dc";ctx.fillRect(0,0,W,H);
-          ctx.fillStyle="#7a9a7a";ctx.font="11px Arial";ctx.textAlign="center";ctx.textBaseline="middle";
-          ctx.fillText("Laddar "+srcDef.name+"...",W/2,H/2);
-        } else if(wmsCache&&wmsCache.loaded){
-          // bbox was calculated from canvas corners so image covers exactly (0,0,W,H)
+        // Find most recent loaded image to show while loading
+        var fallbackImg=null;
+        for(var fk in tileCache.current){
+          var fe=tileCache.current[fk];
+          if(fe&&fe.loaded&&fk.indexOf(layer+"/wms/")===0){fallbackImg=fe;break;}
+        }
+        if(wmsCache&&wmsCache.loaded){
           ctx.drawImage(wmsCache,0,0,W,H);
-        } else if(!wmsCache){
-          tileCache.current[wmsKey]="loading";
-          ctx.fillStyle="#dce8dc";ctx.fillRect(0,0,W,H);
-          ctx.fillStyle="#7a9a7a";ctx.font="11px Arial";ctx.textAlign="center";ctx.textBaseline="middle";
-          ctx.fillText("Laddar "+srcDef.name+"...",W/2,H/2);
-          // Use fetch so we can check content-type and catch XML error responses
-          fetch(wmsUrl).then(function(resp){
-            var ct=resp.headers.get("content-type")||"";
-            if(!resp.ok||ct.indexOf("image")<0){
-              return resp.text().then(function(txt){
-                delete tileCache.current[wmsKey];
-                console.error("WMS error:",resp.status,txt.substring(0,300));
-              });
-            }
-            return resp.blob().then(function(blob){
-              var url2=URL.createObjectURL(blob);
-              var img2=new Image();img2.loaded=false;
-              // Store bbox with image so we can project it correctly on draw
-              img2._bbox=bbox;
-              img2.onload=function(){img2.loaded=true;tileCache.current[wmsKey]=img2;drawMap();};
-              img2.src=url2;
-            });
-          }).catch(function(e){
-            delete tileCache.current[wmsKey];
-            console.error("WMS fetch error:",e);
-          });
+        } else {
+          // Show fallback (old zoom level) while loading
+          if(fallbackImg){ctx.drawImage(fallbackImg,0,0,W,H);}
+          else{ctx.fillStyle="#dce8dc";ctx.fillRect(0,0,W,H);}
+          ctx.fillStyle="rgba(0,0,0,0.3)";ctx.fillRect(W-110,4,106,18);
+          ctx.fillStyle="#fff";ctx.font="10px Arial";ctx.textAlign="right";ctx.textBaseline="top";
+          ctx.fillText("Laddar "+srcDef.name+"...",W-6,7);
+          if(wmsCache!=="loading"){
+            tileCache.current[wmsKey]="loading";
+            // Debounce: wait 200ms after last pan/zoom before fetching
+            if(wmsDebounceRef.current)clearTimeout(wmsDebounceRef.current);
+            wmsDebounceRef.current=setTimeout(function(){
+              wmsDebounceRef.current=null;
+              fetch(wmsUrl).then(function(resp){
+                var ct=resp.headers.get("content-type")||"";
+                if(!resp.ok||ct.indexOf("image")<0){
+                  return resp.text().then(function(txt){
+                    delete tileCache.current[wmsKey];
+                    console.error("WMS error:",resp.status,txt.substring(0,200));
+                  });
+                }
+                return resp.blob().then(function(blob){
+                  var url2=URL.createObjectURL(blob);
+                  var img2=new Image();img2.loaded=false;
+                  img2.onload=function(){img2.loaded=true;tileCache.current[wmsKey]=img2;drawMap();};
+                  img2.src=url2;
+                });
+              }).catch(function(e){delete tileCache.current[wmsKey];console.error("WMS:",e);});
+            },250);
+          }
         }
       }
     } else {
