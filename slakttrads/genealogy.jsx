@@ -895,13 +895,14 @@ function MapView(props) {
     ind.id=followPersonId;
     var locs=buildPersonLocations(ind,extraLocs);
     if(!locs||!locs.length) return;
-    // Find best location for this year
+    // Find best location for this year — use .from field (buildPersonLocations uses from/to not year)
     var best=null;
     for(var i=0;i<locs.length;i++){
-      if(locs[i].lat&&locs[i].lon){
-        if(!best) best=locs[i];
-        var locYear=locs[i].year?parseInt(locs[i].year):null;
-        if(locYear&&locYear<=followYear) best=locs[i];
+      var loc=locs[i];
+      if(loc.lat&&loc.lon){
+        if(!best) best=loc;
+        var locYear=loc.from?parseInt(loc.from):(loc.year?parseInt(loc.year):null);
+        if(locYear&&locYear<=followYear) best=loc;
       }
     }
     if(best&&best.lat&&best.lon){
@@ -1192,18 +1193,11 @@ function PhotoManager(props){
     try{localStorage.setItem('slakttrads_photos',JSON.stringify(next));}catch(e){}
     var arr=next[editId]||[];
     var first=arr.find(function(p){return p.type==="portrait"&&p.label&&(p.label.indexOf("vuxen")>=0||p.label.indexOf("adult")>=0);})||arr.find(function(p){return p.type==="portrait";})||arr[0];
-    if(first&&first.url){
-      var img=new Image();img.crossOrigin="anonymous";
-      img.onload=function(){
-        var cv=document.createElement("canvas");cv.width=128;cv.height=128;
-        var ctx=cv.getContext("2d");
-        var sz=Math.min(img.width,img.height),sx=(img.width-sz)/2,sy=(img.height-sz)/2;
-        ctx.beginPath();ctx.arc(64,64,60,0,Math.PI*2);ctx.clip();
-        ctx.drawImage(img,sx,sy,sz,sz,0,0,128,128);
-        ctx.beginPath();ctx.arc(64,64,60,0,Math.PI*2);ctx.strokeStyle="#fff";ctx.lineWidth=3;ctx.stroke();
-        setPhotoTex(function(prev){var n={};for(var k in prev)n[k]=prev[k];if(typeof THREE!=="undefined")n[editId]=new THREE.CanvasTexture(cv);return n;});
-      };
-      img.src=first.url;
+    if(first&&first.url&&typeof THREE!=="undefined"){
+      var loader2=new THREE.TextureLoader();loader2.crossOrigin="anonymous";
+      loader2.load(first.url,function(tex2){
+        setPhotoTex(function(prev){var n={};for(var k in prev)n[k]=prev[k];n[editId]=tex2;return n;});
+      });
     }
   }
 
@@ -1739,28 +1733,41 @@ function GenealogyApp(){
   var s15=_s(0),photoCount=s15[0],setPhotoCount=s15[1];
   useEffect(function(){
     var c=0;
+    var toLoad=[];
     for(var k in photoUrls){
       var arr2=photoUrls[k]||[];
       c+=arr2.length;
-      // Build 3D texture: prefer vuxen portrait
       var first2=arr2.find(function(p){return p.type==="portrait"&&p.label&&(p.label.indexOf("vuxen")>=0||p.label.indexOf("adult")>=0);})||arr2.find(function(p){return p.type==="portrait";})||arr2[0];
-      if(first2&&first2.url&&typeof THREE!=="undefined"){
-        (function(id,src){
-          var img=new Image();img.crossOrigin="anonymous";
+      if(first2&&first2.url) toLoad.push({id:k,src:first2.url});
+    }
+    setPhotoCount(c);
+    if(!toLoad.length) return;
+    // Use THREE.TextureLoader if available (works with SVG + avoids canvas taint)
+    function loadOne(id,src){
+      if(typeof THREE!=="undefined"){
+        var loader=new THREE.TextureLoader();
+        loader.crossOrigin="anonymous";
+        loader.load(src,function(tex){
+          setPhotoTex(function(prev){var n={};for(var k2 in prev)n[k2]=prev[k2];n[id]=tex;return n;});
+        },undefined,function(){
+          // fallback canvas for data: URLs
+          var img=new Image();
           img.onload=function(){
             var cv=document.createElement("canvas");cv.width=128;cv.height=128;
             var ctx=cv.getContext("2d");
             var sz=Math.min(img.width,img.height),sx=(img.width-sz)/2,sy=(img.height-sz)/2;
             ctx.beginPath();ctx.arc(64,64,60,0,Math.PI*2);ctx.clip();
             ctx.drawImage(img,sx,sy,sz,sz,0,0,128,128);
-            ctx.beginPath();ctx.arc(64,64,60,0,Math.PI*2);ctx.strokeStyle="#fff";ctx.lineWidth=3;ctx.stroke();
-            setPhotoTex(function(prev){var n={};for(var k2 in prev)n[k2]=prev[k2];n[id]=new THREE.CanvasTexture(cv);return n;});
+            if(typeof THREE!=="undefined") setPhotoTex(function(prev){var n={};for(var k3 in prev)n[k3]=prev[k3];n[id]=new THREE.CanvasTexture(cv);return n;});
           };
           img.src=src;
-        })(k,first2.url);
+        });
       }
     }
-    setPhotoCount(c);
+    // Small delay to ensure THREE scene is initialised before we push textures
+    setTimeout(function(){
+      toLoad.forEach(function(item){loadOne(item.id,item.src);});
+    },300);
   },[photoUrls]);
   var s16=_s(0),viewTrigger=s16[0],setViewTrigger=s16[1];
   var s17=_s("3d"),rightView=s17[0],setRightView=s17[1];
