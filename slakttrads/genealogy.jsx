@@ -743,14 +743,14 @@ function MapView(props) {
     topo:{name:"Topo",url:function(z,x,y){var s=["a","b","c"][(x+y)%3];return"https://"+s+".tile.opentopomap.org/"+z+"/"+x+"/"+y+".png";},attr:"© OpenTopoMap"},
     cycle:{name:"Terrain",url:function(z,x,y){return"https://tile.thunderforest.com/landscape/"+z+"/"+x+"/"+y+".png?apikey=6170aad10dfd42a38d4d8c709a536f38";},attr:"© Thunderforest"},
     ekon:{name:"Ekon.karta",type:"wms",
-      wmsUrl:function(bbox,W,H){return"https://ext-geodata-raster.lansstyrelsen.se/arcgis/services/RasterNationellt/lst_ext_ekonomiska_kartan/ImageServer/WMSServer?SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0&LAYERS=0&STYLES=&CRS=EPSG:4326&FORMAT=image/png&TRANSPARENT=FALSE&WIDTH="+Math.round(W*2)+"&HEIGHT="+Math.round(H*2)+"&BBOX="+bbox;},
+      wmsUrl:function(bbox,W,H){return"/api/wms-proxy?service=ekon&bbox="+encodeURIComponent(bbox)+"&w="+Math.round(W*2)+"&h="+Math.round(H*2);},
       attr:"© Lantmäteriet CC0"},
     ortho60:{name:"Flygfoto 1960",type:"wms",
-      wmsUrl:function(bbox,W,H,key){return key?"https://api.lantmateriet.se/historiska-ortofoton/wms/v1/token/"+key+"/?SERVICE=WMS&REQUEST=GetMap&VERSION=1.1.1&LAYERS=OI.Histortho_60&STYLES=&SRS=EPSG:4326&FORMAT=image/jpeg&WIDTH="+Math.round(W*2)+"&HEIGHT="+Math.round(H*2)+"&BBOX="+bbox:null;},
-      attr:"© Lantmäteriet CC0",needsKey:true},
+      wmsUrl:function(bbox,W,H){return"/api/wms-proxy?service=ortho60&bbox="+encodeURIComponent(bbox)+"&w="+Math.round(W*2)+"&h="+Math.round(H*2);},
+      attr:"© Lantmäteriet CC0"},
     ortho75:{name:"Flygfoto 1975",type:"wms",
-      wmsUrl:function(bbox,W,H,key){return key?"https://api.lantmateriet.se/historiska-ortofoton/wms/v1/token/"+key+"/?SERVICE=WMS&REQUEST=GetMap&VERSION=1.1.1&LAYERS=OI.Histortho_75&STYLES=&SRS=EPSG:4326&FORMAT=image/jpeg&WIDTH="+Math.round(W*2)+"&HEIGHT="+Math.round(H*2)+"&BBOX="+bbox:null;},
-      attr:"© Lantmäteriet CC0",needsKey:true},
+      wmsUrl:function(bbox,W,H){return"/api/wms-proxy?service=ortho75&bbox="+encodeURIComponent(bbox)+"&w="+Math.round(W*2)+"&h="+Math.round(H*2);},
+      attr:"© Lantmäteriet CC0"},
   };
 
   // Slippy map math (Web Mercator)
@@ -822,7 +822,7 @@ function MapView(props) {
     if(srcDef&&srcDef.type==="wms"){
       // WMS: single image for whole viewport
       var bbox=wmsBbox(v,W,H);
-      var wmsUrl=srcDef.wmsUrl(bbox,W,H,lmKey);
+      var wmsUrl=srcDef.wmsUrl(bbox,W,H);
       if(!wmsUrl){
         ctx.fillStyle="rgba(40,40,40,0.85)";ctx.fillRect(0,0,W,H);
         ctx.fillStyle="#ffa94d";ctx.font="bold 12px Arial";ctx.textAlign="center";ctx.textBaseline="middle";
@@ -1068,7 +1068,7 @@ function MapView(props) {
     <canvas ref={cvRef} style={{width:"100%",height:"100%",display:"block",cursor:"grab"}}/>
     <div style={{position:"absolute",top:8,right:8,display:"flex",gap:2,background:"rgba(255,255,255,0.9)",borderRadius:6,padding:2,boxShadow:"0 1px 4px rgba(0,0,0,0.2)"}}>
       {Object.keys(TILE_SOURCES).map(function(k){var sdef=TILE_SOURCES[k];return(<button key={k} onClick={function(){tileErrRef.current={ok:0,err:0};Object.keys(tileCache.current).forEach(function(tk){if(tk.indexOf('/wms/')>=0)delete tileCache.current[tk];});setMapLayer(k);}} style={{padding:"3px 8px",fontSize:9,fontWeight:mapLayer===k?700:400,border:"none",borderRadius:4,cursor:"pointer",background:mapLayer===k?"#4a9eff":"transparent",color:mapLayer===k?(sdef.needsKey&&!lmKey?"#ffa94d":"#fff"):(sdef.needsKey&&!lmKey?"#ffa94d55":"#555")}}>{sdef.name}{sdef.needsKey&&!lmKey?" 🔑":""}</button>);})}
-      <button onClick={function(){setShowLMConf(!showLMConf);}} style={{marginLeft:4,padding:"3px 8px",fontSize:9,border:"none",borderRadius:4,cursor:"pointer",background:showLMConf?"rgba(255,169,77,0.3)":"transparent",color:"#ffa94d"}} title="Lantmäteriets API-nyckel">⚙️ LM-nyckel</button>
+
       {showLMConf&&(<div style={{position:"absolute",top:32,right:4,background:"#161b22",border:"1px solid #30363d",borderRadius:8,padding:"10px 12px",zIndex:50,minWidth:280,boxShadow:"0 4px 20px rgba(0,0,0,0.5)"}}>
         <div style={{fontSize:10,color:"#8b949e",marginBottom:6,fontWeight:700,letterSpacing:1,textTransform:"uppercase"}}>Lantmäteriet API-nyckel</div>
         <input type="password" value={lmKey} placeholder="Klistra in din LM-nyckel..."
