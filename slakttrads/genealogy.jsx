@@ -1306,8 +1306,11 @@ function PhotoManager(props){
     return {gedcomId:gedcomId,type:type,label:label,year:year,seq:parseInt(seq)||1};
   }
 
+  var syncInProgressRef=useRef(false);
   function syncFromGitHub(cfg){
     if(!cfg||!cfg.token||!cfg.repo) return;
+    if(syncInProgressRef.current){console.log("Sync already in progress, skipping");return;}
+    syncInProgressRef.current=true;
     setSyncing(true);setSyncMsg(null);
     // Clear stale localStorage so old entries don't interfere
     try{localStorage.removeItem('slakttrads_photos');}catch(e){}
@@ -1349,9 +1352,11 @@ function PhotoManager(props){
         var idList=Object.keys(newUrls).slice(0,6).join(", ");
         var fileList=items.map(function(f){return f.path.split("/").pop();}).join(", ");
         console.log("Sync found files:",fileList);
+        syncInProgressRef.current=false;
         setSyncing(false);setSyncMsg("\u2713 "+total+" bilder | "+persons+" pers: "+idList+truncated);
       })
       .catch(function(e){
+        syncInProgressRef.current=false;
         setSyncing(false);
         setSyncMsg("Fel: "+(typeof e==="string"?e:e.message||"okänt fel")+" — kontrollera token och repo");
       });
