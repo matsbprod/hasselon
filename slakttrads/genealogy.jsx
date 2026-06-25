@@ -699,7 +699,7 @@ function MapView(props) {
   var tileCache=useRef({});
   var layerRef=useRef("osm");
   var tileErrRef=useRef({ok:0,err:0});
-  var individuals=props.individuals,year=props.year,selId=props.selectedId,onSelect=props.onSelect,extraLocs=props.extraLocs||{},buildPersonLocations=props.buildPersonLocations,focusLat=props.focusLat,focusLon=props.focusLon,focusZoom=props.focusZoom;
+  var individuals=props.individuals,year=props.year,selId=props.selectedId,onSelect=props.onSelect,extraLocs=props.extraLocs||{},buildPersonLocations=props.buildPersonLocations,focusLat=props.focusLat,focusLon=props.focusLon,focusZoom=props.focusZoom,followPersonId=props.followPersonId,followYear=props.followYear;
   var s13=useState("osm"),mapLayer=s13[0],setMapLayer=s13[1];
 
   // Tile sources
@@ -886,6 +886,32 @@ function MapView(props) {
       drawMap();
     }
   },[focusLat,focusLon,focusZoom]);
+
+  // Follow selected person as year slider moves
+  useEffect(function(){
+    if(!followPersonId||!individuals||!buildPersonLocations) return;
+    var ind=individuals[followPersonId];
+    if(!ind) return;
+    ind.id=followPersonId;
+    var locs=buildPersonLocations(ind,extraLocs);
+    if(!locs||!locs.length) return;
+    // Find best location for this year
+    var best=null;
+    for(var i=0;i<locs.length;i++){
+      if(locs[i].lat&&locs[i].lon){
+        if(!best) best=locs[i];
+        var locYear=locs[i].year?parseInt(locs[i].year):null;
+        if(locYear&&locYear<=followYear) best=locs[i];
+      }
+    }
+    if(best&&best.lat&&best.lon){
+      var v=viewRef.current;
+      // Only pan if not manually dragged recently
+      v.cx=best.lon;v.cy=best.lat;
+      if(!v.zoom||v.zoom<9) v.zoom=11;
+      drawMap();
+    }
+  },[followYear,followPersonId]);
 
   // Interaction
   useEffect(function(){
@@ -2061,7 +2087,23 @@ function GenealogyApp(){
           {(rightView==="pedigree"||rightView==="fan")&&<div style={{display:"flex",borderLeft:"1px solid "+C.border}}><button onClick={function(){setPedigreeMode("ancestors");}} style={{padding:"8px 10px",fontSize:9,fontWeight:pedigreeMode==="ancestors"?700:400,color:pedigreeMode==="ancestors"?"#66d9a0":C.dim,background:pedigreeMode==="ancestors"?"rgba(102,217,160,0.08)":"transparent",border:"none",cursor:"pointer"}}>{"↑ Ancestors"}</button><button onClick={function(){setPedigreeMode("descendants");}} style={{padding:"8px 10px",fontSize:9,fontWeight:pedigreeMode==="descendants"?700:400,color:pedigreeMode==="descendants"?"#ff6b9d":C.dim,background:pedigreeMode==="descendants"?"rgba(255,107,157,0.08)":"transparent",border:"none",cursor:"pointer"}}>{"↓ Descendants"}</button></div>}
         </div>
         <div style={{flex:1,position:"relative",minHeight:0}}>
-          {rightView==="map"&&<MapView individuals={parsedData.individuals} year={sliderYear} rangeStart={effStart} rangeEnd={effEnd} selectedId={sel?sel.id:null} onSelect={mapSel} isSample={isSample} extraLocs={extraLocs} buildPersonLocations={buildPersonLocations} focusLat={mapFocus?mapFocus.lat:null} focusLon={mapFocus?mapFocus.lon:null} focusZoom={mapFocus?mapFocus.zoom:null}/>}
+          {rightView==="map"&&<div style={{position:"relative",width:"100%",height:"100%"}}>
+            <MapView individuals={parsedData.individuals} year={sliderYear} rangeStart={effStart} rangeEnd={effEnd} selectedId={sel?sel.id:null} onSelect={mapSel} isSample={isSample} extraLocs={extraLocs} buildPersonLocations={buildPersonLocations} focusLat={mapFocus?mapFocus.lat:null} focusLon={mapFocus?mapFocus.lon:null} focusZoom={mapFocus?mapFocus.zoom:null} followPersonId={sel?sel.id:null} followYear={sliderYear}/>
+            {panelPerson&&(<div style={{position:"absolute",bottom:8,left:8,width:500,background:C.panel+"f5",borderRadius:14,border:"1px solid "+C.border,zIndex:10,backdropFilter:"blur(14px)",overflow:"hidden",pointerEvents:"all"}}>
+              <div style={{padding:"10px 12px 8px",background:"linear-gradient(135deg,"+(panelPerson.sex==="M"?C.male:panelPerson.sex==="F"?C.female:C.unknown)+"15,transparent)",borderBottom:"1px solid "+C.border}}>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  {photoUrls[panelPerson.id]&&photoUrls[panelPerson.id].length>0?<img src={photoUrls[panelPerson.id][0].url} style={{width:44,height:44,borderRadius:8,objectFit:"cover",border:"2px solid "+(panelPerson.sex==="M"?"#4a9eff":"#ff6b9d"),flexShrink:0}}/>:null}
+                  <div style={{flex:1}}><div style={{fontSize:15,fontWeight:600}}>{panelPerson.name}</div><div style={{fontSize:10,color:C.dim}}>{panelPerson.birthDate}{panelPerson.deathDate?" – "+panelPerson.deathDate:""}</div></div>
+                  <button onClick={function(){setInspPerson(null);setSel(null);}} style={{background:"rgba(255,255,255,0.06)",border:"none",color:C.dim,cursor:"pointer",fontSize:13,width:26,height:26,borderRadius:6,flexShrink:0}}>✕</button>
+                </div>
+              </div>
+              {photoUrls[panelPerson.id]&&photoUrls[panelPerson.id].length>0&&(
+                <div style={{padding:"6px 12px 8px",display:"flex",gap:5,overflowX:"auto"}}>
+                  {(function(){var phs=photoUrls[panelPerson.id];return phs.map(function(ph,pidx){var pt2=({portrait:"#4a9eff",wedding:"#ff6b9d",place:"#66d9a0",document:"#ffa94d",group:"#9775fa"})[ph.type]||"#8899aa";return(<div key={pidx} style={{flexShrink:0,cursor:"pointer"}} onClick={function(){setPanelLightbox({photos:phs,idx:pidx});}}><img src={ph.url} style={{width:46,height:46,borderRadius:5,objectFit:"cover",border:"2px solid "+pt2,display:"block"}} onError={function(e){e.target.style.opacity=0.3;}}/></div>);});})()}
+                </div>
+              )}
+            </div>)}
+          </div>}
           {rightView==="pedigree"&&<PedigreeView individuals={parsedData.individuals} families={parsedData.families} selectedId={sel?sel.id:null} mode={pedigreeMode} onInspect={function(id){var p=parsedData.individuals[id];if(p){p.id=id;setInspPerson(p);}}} onSelect={function(id){var nd=layout.nodes.find(function(n){return n.id===id;});setSel(nd||null);}} photoUrls={photoUrls}/>}
           {rightView==="fan"&&<FanView individuals={parsedData.individuals} families={parsedData.families} selectedId={sel?sel.id:null} mode={pedigreeMode} onInspect={function(id){var p=parsedData.individuals[id];if(p){p.id=id;setInspPerson(p);}}} onSelect={function(id){var nd=layout.nodes.find(function(n){return n.id===id;});setSel(nd||null);}} photoUrls={photoUrls}/>}
           {rightView==="kb"&&(<div style={{width:"100%",height:"100%",position:"relative",background:C.bg}}>
