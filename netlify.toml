@@ -3,6 +3,10 @@
 
 [functions]
   directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+[functions.wms-proxy]
+  timeout = 26
 
 [[redirects]]
   from = "/api/wms-proxy"

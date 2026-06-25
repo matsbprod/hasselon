@@ -716,7 +716,7 @@ function FanView(props){
 }
 
 function MapView(props) {
-  var cvRef=useRef(null), clickAreas=useRef([]), wmsDebounceRef=useRef(null);
+  var cvRef=useRef(null), clickAreas=useRef([]), wmsDebounceRef=useRef(null), wmsAbortRef=useRef(null);
   var viewRef=useRef({cx:11.75,cy:58.15,zoom:9,dragging:false,sx:0,sy:0,scx:0,scy:0});
   var tileCache=useRef({});
   var layerRef=useRef("osm");
@@ -744,13 +744,13 @@ function MapView(props) {
     topo:{name:"Topo",url:function(z,x,y){var s=["a","b","c"][(x+y)%3];return"https://"+s+".tile.opentopomap.org/"+z+"/"+x+"/"+y+".png";},attr:"© OpenTopoMap"},
     cycle:{name:"Terrain",url:function(z,x,y){return"https://tile.thunderforest.com/landscape/"+z+"/"+x+"/"+y+".png?apikey=6170aad10dfd42a38d4d8c709a536f38";},attr:"© Thunderforest"},
     ekon:{name:"Ekon.karta",type:"wms",
-      wmsUrl:function(bbox,W,H){return"/api/wms-proxy?service=ekon&bbox="+encodeURIComponent(bbox)+"&w="+Math.round(W)+"&h="+Math.round(H);},
+      wmsUrl:function(bbox,W,H){var mw=Math.min(Math.round(W),512),mh=Math.min(Math.round(H),512);return"/api/wms-proxy?service=ekon&bbox="+encodeURIComponent(bbox)+"&w="+mw+"&h="+mh;},
       attr:"© Lantmäteriet CC0"},
     ortho60:{name:"Flygfoto 1960",type:"wms",
-      wmsUrl:function(bbox,W,H){return"/api/wms-proxy?service=ortho60&bbox="+encodeURIComponent(bbox)+"&w="+Math.round(W)+"&h="+Math.round(H);},
+      wmsUrl:function(bbox,W,H){var mw=Math.min(Math.round(W),512),mh=Math.min(Math.round(H),512);return"/api/wms-proxy?service=ortho60&bbox="+encodeURIComponent(bbox)+"&w="+mw+"&h="+mh;},
       attr:"© Lantmäteriet CC0"},
     ortho75:{name:"Flygfoto 1975",type:"wms",
-      wmsUrl:function(bbox,W,H){return"/api/wms-proxy?service=ortho75&bbox="+encodeURIComponent(bbox)+"&w="+Math.round(W)+"&h="+Math.round(H);},
+      wmsUrl:function(bbox,W,H){var mw=Math.min(Math.round(W),512),mh=Math.min(Math.round(H),512);return"/api/wms-proxy?service=ortho75&bbox="+encodeURIComponent(bbox)+"&w="+mw+"&h="+mh;},
       attr:"© Lantmäteriet CC0"},
   };
 
@@ -853,7 +853,10 @@ function MapView(props) {
             if(wmsDebounceRef.current)clearTimeout(wmsDebounceRef.current);
             wmsDebounceRef.current=setTimeout(function(){
               wmsDebounceRef.current=null;
-              fetch(wmsUrl).then(function(resp){
+              if(wmsAbortRef.current)wmsAbortRef.current.abort();
+              wmsAbortRef.current=new AbortController();
+              var signal=wmsAbortRef.current.signal;
+              fetch(wmsUrl,{signal:signal}).then(function(resp){
                 var ct=resp.headers.get("content-type")||"";
                 if(!resp.ok||ct.indexOf("image")<0){
                   return resp.text().then(function(txt){
@@ -874,7 +877,7 @@ function MapView(props) {
                   };
                   img2.src=url2;
                 });
-              }).catch(function(e){delete tileCache.current[wmsKey];console.error("WMS:",e);});
+              }).catch(function(e){if(e.name!=="AbortError"){delete tileCache.current[wmsKey];console.error("WMS:",e);}});
             },250);
           }
         }
@@ -1026,9 +1029,9 @@ function MapView(props) {
     var cv=cvRef.current;if(!cv)return;
     var v=viewRef.current;
     function clearWmsCache(){
-      // Cancel any pending debounced fetch
       if(wmsDebounceRef.current){clearTimeout(wmsDebounceRef.current);wmsDebounceRef.current=null;}
-      // Remove all WMS entries including stuck "loading" strings
+      // Abort any in-flight WMS fetch
+      if(wmsAbortRef.current){wmsAbortRef.current.abort();wmsAbortRef.current=null;}
       var tc=tileCache.current;
       Object.keys(tc).forEach(function(k){if(k.indexOf('/wms/')>=0)delete tc[k];});
     }
