@@ -729,12 +729,15 @@ function MapView(props) {
   var sLM=useState(lmKeyInit()),lmKey=sLM[0],setLmKey=sLM[1];
   var sLMconf=useState(false),showLMConf=sLMconf[0],setShowLMConf=sLMconf[1];
 
-  // WMS BBOX helper (EPSG:4326)
+  // WMS BBOX helper — sends minLon,minLat,maxLon,maxLat to proxy
+  // Proxy handles axis-flipping for WMS 1.3.0
   function wmsBbox(v,W,H){
     var z=v.zoom;
     var cxT=lon2tileX(v.cx,z),cyT=lat2tileY(v.cy,z);
     var minLon=tileX2lon(cxT-W/512,z),maxLon=tileX2lon(cxT+W/512,z);
     var maxLat=tileY2lat(cyT-H/512,z),minLat=tileY2lat(cyT+H/512,z);
+    // Clamp to valid WGS84 range
+    minLat=Math.max(-85,minLat);maxLat=Math.min(85,maxLat);
     return minLon.toFixed(6)+","+minLat.toFixed(6)+","+maxLon.toFixed(6)+","+maxLat.toFixed(6);
   }
 
@@ -828,25 +831,39 @@ function MapView(props) {
         ctx.fillStyle="#ffa94d";ctx.font="bold 12px Arial";ctx.textAlign="center";ctx.textBaseline="middle";
         ctx.fillText("Lantmäteriets flygfoton kräver API-nyckel — klicka \u2699\uFE0F LM-nyckel",W/2,H/2);
       } else {
-        var wmsKey=layer+"/wms/"+bbox.substring(0,20);
+        // Use full bbox as key so different views get separate cache entries
+        var wmsKey=layer+"/wms/"+bbox;
         var wmsCache=tileCache.current[wmsKey];
-        if(wmsCache&&wmsCache.loaded){ctx.drawImage(wmsCache,0,0,W,H);}
-        else if(!wmsCache){
+        if(wmsCache==="loading"){
           ctx.fillStyle="#dce8dc";ctx.fillRect(0,0,W,H);
           ctx.fillStyle="#7a9a7a";ctx.font="11px Arial";ctx.textAlign="center";ctx.textBaseline="middle";
           ctx.fillText("Laddar "+srcDef.name+"...",W/2,H/2);
-          var wImg=new Image();wImg.crossOrigin="anonymous";wImg.loaded=false;
-          tileCache.current[wmsKey]=wImg;
-          wImg.onload=function(){wImg.loaded=true;drawMap();};
-          wImg.onerror=function(){
-            tileCache.current[wmsKey]=null;
-            ctx.fillStyle="rgba(200,40,40,0.85)";ctx.fillRect(0,0,W,H);
-            ctx.fillStyle="#fff";ctx.font="12px Arial";ctx.textAlign="center";ctx.textBaseline="middle";
-            ctx.fillText("WMS-fel — kontrollera nyckel eller nätverksåtkomst",W/2,H/2);
-          };
-          wImg.src=wmsUrl;
-        } else {
+        } else if(wmsCache&&wmsCache.loaded){
+          ctx.drawImage(wmsCache,0,0,W,H);
+        } else if(!wmsCache){
+          tileCache.current[wmsKey]="loading";
           ctx.fillStyle="#dce8dc";ctx.fillRect(0,0,W,H);
+          ctx.fillStyle="#7a9a7a";ctx.font="11px Arial";ctx.textAlign="center";ctx.textBaseline="middle";
+          ctx.fillText("Laddar "+srcDef.name+"...",W/2,H/2);
+          // Use fetch so we can check content-type and catch XML error responses
+          fetch(wmsUrl).then(function(resp){
+            var ct=resp.headers.get("content-type")||"";
+            if(!resp.ok||ct.indexOf("image")<0){
+              return resp.text().then(function(txt){
+                delete tileCache.current[wmsKey];
+                console.error("WMS error:",resp.status,txt.substring(0,300));
+              });
+            }
+            return resp.blob().then(function(blob){
+              var url2=URL.createObjectURL(blob);
+              var img2=new Image();img2.loaded=false;
+              img2.onload=function(){img2.loaded=true;tileCache.current[wmsKey]=img2;drawMap();};
+              img2.src=url2;
+            });
+          }).catch(function(e){
+            delete tileCache.current[wmsKey];
+            console.error("WMS fetch error:",e);
+          });
         }
       }
     } else {
