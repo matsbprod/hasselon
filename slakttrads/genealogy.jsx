@@ -2278,15 +2278,15 @@ function GenealogyApp(){
             <div style={{padding:"4px 14px 12px"}}>
               <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:4}}>
                 {(function(){var phs=photoUrls[panelPerson.id];return phs.map(function(ph,pidx){var pt=({portrait:"#4a9eff",wedding:"#ff6b9d",place:"#66d9a0",document:"#ffa94d",group:"#9775fa"})[ph.type]||"#8899aa";return(<div key={pidx} style={{flexShrink:0,textAlign:"center",cursor:"pointer"}}
-                  onClick={function(){setPanelLightbox({photos:phs,idx:pidx});}}>
-                  <img src={ph.url} style={{width:54,height:54,borderRadius:6,objectFit:"cover",border:"2px solid "+pt,display:"block"}} onError={function(e){e.target.style.opacity=0.3;}}/>
+                  onClick={function(e){e.stopPropagation();setPanelLightbox({photos:phs,idx:pidx});}}>
+                  <img src={ph.url} style={{width:54,height:54,borderRadius:6,objectFit:"cover",border:"2px solid "+pt,display:"block"}} onError={function(e2){e2.target.style.opacity=0.3;}}/>
                   <div style={{fontSize:8,color:C.dim,marginTop:2,maxWidth:54,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{ph.label||ph.type}</div>
                 </div>);});})()}
               </div>
             </div>
           )}
         </div>)}
-        {panelLightbox&&(<div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.88)",zIndex:50,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}
+        {panelLightbox&&(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.88)",zIndex:2000,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}
           onClick={function(){setPanelLightbox(null);}}>
           <button onClick={function(){setPanelLightbox(null);}} style={{position:"absolute",top:12,right:12,background:"rgba(255,255,255,0.1)",border:"none",color:"#fff",fontSize:18,width:34,height:34,borderRadius:7,cursor:"pointer"}}>✕</button>
           {panelLightbox.idx>0&&<button onClick={function(e){e.stopPropagation();setPanelLightbox(function(lb){return{photos:lb.photos,idx:lb.idx-1};});}} style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.1)",border:"none",color:"#fff",fontSize:28,width:44,height:44,borderRadius:8,cursor:"pointer"}}>‹</button>}
@@ -2307,9 +2307,9 @@ function GenealogyApp(){
           {(rightView==="pedigree"||rightView==="fan")&&<div style={{display:"flex",borderLeft:"1px solid "+C.border}}><button onClick={function(){setPedigreeMode("ancestors");}} style={{padding:"8px 10px",fontSize:9,fontWeight:pedigreeMode==="ancestors"?700:400,color:pedigreeMode==="ancestors"?"#66d9a0":C.dim,background:pedigreeMode==="ancestors"?"rgba(102,217,160,0.08)":"transparent",border:"none",cursor:"pointer"}}>{"↑ Ancestors"}</button><button onClick={function(){setPedigreeMode("descendants");}} style={{padding:"8px 10px",fontSize:9,fontWeight:pedigreeMode==="descendants"?700:400,color:pedigreeMode==="descendants"?"#ff6b9d":C.dim,background:pedigreeMode==="descendants"?"rgba(255,107,157,0.08)":"transparent",border:"none",cursor:"pointer"}}>{"↓ Descendants"}</button></div>}
         </div>
         <div style={{flex:1,position:"relative",minHeight:0}}>
-          {rightView==="map"&&<div style={{position:"relative",width:"100%",height:"100%"}}>
+          {rightView==="map"&&<div style={{position:"relative",width:"100%",height:"100%",pointerEvents:"all"}}>
             <MapView individuals={parsedData.individuals} year={sliderYear} rangeStart={effStart} rangeEnd={effEnd} selectedId={sel?sel.id:null} onSelect={mapSel} isSample={isSample} extraLocs={extraLocs} buildPersonLocations={buildPersonLocations} focusLat={mapFocus?mapFocus.lat:null} focusLon={mapFocus?mapFocus.lon:null} focusZoom={mapFocus?mapFocus.zoom:null} followPersonId={sel?sel.id:null} followYear={sliderYear} photoUrls={photoUrls}/>
-            {panelPerson&&(<div style={{position:"absolute",bottom:8,left:8,width:500,background:C.panel+"f5",borderRadius:14,border:"1px solid "+C.border,zIndex:10,backdropFilter:"blur(14px)",overflow:"hidden",pointerEvents:"all"}}>
+            {panelPerson&&(<div style={{position:"absolute",bottom:8,left:8,width:500,background:C.panel+"f5",borderRadius:14,border:"1px solid "+C.border,zIndex:10,backdropFilter:"blur(14px)",overflow:"hidden",pointerEvents:"all"}} onClick={function(e){e.stopPropagation();}}>
               <div style={{padding:"10px 12px 8px",background:"linear-gradient(135deg,"+(panelPerson.sex==="M"?C.male:panelPerson.sex==="F"?C.female:C.unknown)+"15,transparent)",borderBottom:"1px solid "+C.border}}>
                 <div style={{display:"flex",alignItems:"center",gap:8}}>
                   {photoUrls[panelPerson.id]&&photoUrls[panelPerson.id].length>0?<img src={photoUrls[panelPerson.id][0].url} style={{width:44,height:44,borderRadius:8,objectFit:"cover",border:"2px solid "+(panelPerson.sex==="M"?"#4a9eff":"#ff6b9d"),flexShrink:0}}/>:null}
@@ -2319,7 +2319,7 @@ function GenealogyApp(){
               </div>
               {photoUrls[panelPerson.id]&&photoUrls[panelPerson.id].length>0&&(
                 <div style={{padding:"6px 12px 8px",display:"flex",gap:5,overflowX:"auto"}}>
-                  {(function(){var phs=photoUrls[panelPerson.id];return phs.map(function(ph,pidx){var pt2=({portrait:"#4a9eff",wedding:"#ff6b9d",place:"#66d9a0",document:"#ffa94d",group:"#9775fa"})[ph.type]||"#8899aa";return(<div key={pidx} style={{flexShrink:0,cursor:"pointer"}} onClick={function(){setPanelLightbox({photos:phs,idx:pidx});}}><img src={ph.url} style={{width:46,height:46,borderRadius:5,objectFit:"cover",border:"2px solid "+pt2,display:"block"}} onError={function(e){e.target.style.opacity=0.3;}}/></div>);});})()}
+                  {(function(){var phs=photoUrls[panelPerson.id];return phs.map(function(ph,pidx){var pt2=({portrait:"#4a9eff",wedding:"#ff6b9d",place:"#66d9a0",document:"#ffa94d",group:"#9775fa"})[ph.type]||"#8899aa";return(<div key={pidx} style={{flexShrink:0,cursor:"pointer"}} onClick={function(e){e.stopPropagation();setPanelLightbox({photos:phs,idx:pidx});}}><img src={ph.url} style={{width:46,height:46,borderRadius:5,objectFit:"cover",border:"2px solid "+pt2,display:"block"}} onError={function(e2){e2.target.style.opacity=0.3;}}/></div>);});})()}
                 </div>
               )}
             </div>)}
@@ -2372,7 +2372,7 @@ function GenealogyApp(){
                 </div>
                 {photoUrls[kbPerson.id]&&photoUrls[kbPerson.id].length>0&&(
                   <div style={{padding:"6px 12px 8px",display:"flex",gap:5,overflowX:"auto"}}>
-                    {(function(){var phs=photoUrls[kbPerson.id];return phs.map(function(ph,pidx){var pt2=({portrait:"#4a9eff",wedding:"#ff6b9d",place:"#66d9a0",document:"#ffa94d",group:"#9775fa"})[ph.type]||"#8899aa";return(<div key={pidx} style={{flexShrink:0,cursor:"pointer"}} onClick={function(){setPanelLightbox({photos:phs,idx:pidx});}}><img src={ph.url} style={{width:46,height:46,borderRadius:5,objectFit:"cover",border:"2px solid "+pt2}} onError={function(e){e.target.style.opacity=0.3;}}/></div>);});})()}
+                    {(function(){var phs=photoUrls[kbPerson.id];return phs.map(function(ph,pidx){var pt2=({portrait:"#4a9eff",wedding:"#ff6b9d",place:"#66d9a0",document:"#ffa94d",group:"#9775fa"})[ph.type]||"#8899aa";return(<div key={pidx} style={{flexShrink:0,cursor:"pointer"}} onClick={function(e){e.stopPropagation();setPanelLightbox({photos:phs,idx:pidx});}}><img src={ph.url} style={{width:46,height:46,borderRadius:5,objectFit:"cover",border:"2px solid "+pt2}} onError={function(e2){e2.target.style.opacity=0.3;}}/></div>);});})()}
                   </div>
                 )}
               </div>)}
