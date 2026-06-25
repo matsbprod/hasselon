@@ -1281,33 +1281,29 @@ function PhotoManager(props){
   function parsePhotoMeta(filename){
     var base=filename.replace(/\.[^.]+$/,"");
     var parts=base.split("_");
-    if(parts.length<3) return {gedcomId:null,type:"other",label:base};
+    if(parts.length<2) return {gedcomId:null,type:"other",label:base};
     var gedcomId="@"+parts[0]+"@";
-    // Category: parts[1], optionally + parts[2] if non-numeric
-    var catStart=1;
-    var cat=parts[1];
-    var seqIdx=2;
-    if(parts.length>2&&isNaN(parts[2])){cat=parts[1]+"_"+parts[2];seqIdx=3;}
-    // Find sequence number by index, not value (avoid indexOf matching wrong part)
-    var seq="1";
-    var descStart=seqIdx;
-    if(seqIdx<parts.length&&!isNaN(parts[seqIdx])&&parts[seqIdx].length<4){
-      seq=parts[seqIdx];descStart=seqIdx+1;
+    // Format: I2158_01_description or I2158_foto_barn_1_description (legacy)
+    var seq=1,descStart=1;
+    if(!isNaN(parts[1])&&parts[1].length<=3){
+      seq=parseInt(parts[1]);descStart=2;
+    } else {
+      // Legacy format: find first numeric part as seq
+      for(var li=2;li<parts.length;li++){if(!isNaN(parts[li])&&parts[li].length<4){seq=parseInt(parts[li]);descStart=li+1;break;}}
     }
     var descParts=parts.slice(descStart);
-    var label=descParts.join(" ").trim()||cat.replace(/_/g," ");
-    var typeMap={
-      foto_barn:"portrait",foto_vuxen:"portrait",foto_aldre:"portrait",
-      foto_ung:"portrait",foto_grupp:"group",
-      foto_brollop:"wedding",foto_brollops:"wedding",
-      plats:"place",
-      kyrkbok_fod:"document",kyrkbok_husforh:"document",
-      kyrkbok_vigsel:"document",kyrkbok_dod:"document",kyrkbok:"document"
-    };
-    var type=typeMap[cat]||"other";
+    var label=descParts.join(" ").replace(/_/g," ").trim()||base;
+    // Detect type from all description words
+    var dl=(parts.slice(1).join(" ")).toLowerCase();
+    var type="other";
+    if(dl.indexOf("brollop")>=0||dl.indexOf("wedding")>=0||dl.indexOf("vigsel")>=0) type="wedding";
+    else if(dl.indexOf("plats")>=0||dl.indexOf("hus")>=0||dl.indexOf("gard")>=0||dl.indexOf("torp")>=0||dl.indexOf("gatan")>=0||dl.indexOf("vagen")>=0) type="place";
+    else if(dl.indexOf("kyrkbok")>=0||dl.indexOf("husforh")>=0||dl.indexOf("fod")>=0||dl.indexOf("dod")>=0||dl.indexOf("document")>=0) type="document";
+    else if(dl.indexOf("grupp")>=0||dl.indexOf("group")>=0||dl.indexOf("familj")>=0) type="group";
+    else type="portrait";
     var yearMatch=base.match(/_(1[0-9]{3}|2[0-9]{3})/);
     var year=yearMatch?yearMatch[1]:"";
-    return {gedcomId:gedcomId,type:type,label:label,year:year,seq:parseInt(seq)||1};
+    return {gedcomId:gedcomId,type:type,label:label,year:year,seq:seq};
   }
 
   var syncInProgressRef=useRef(false);
