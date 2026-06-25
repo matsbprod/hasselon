@@ -712,6 +712,26 @@ function FanView(props){
 
   return (<div style={{width:"100%",height:"100%",position:"relative"}}>
     <canvas ref={cvRef} style={{width:"100%",height:"100%",display:"block",cursor:"grab"}}/>
+    {hoverPerson&&(function(){
+      var cvEl=cvRef.current;
+      var W=cvEl?cvEl.parentElement.clientWidth:800;
+      var H=cvEl?cvEl.parentElement.clientHeight:600;
+      var tx=hoverPerson.x+20,ty=hoverPerson.y-10;
+      if(tx+184>W)tx=hoverPerson.x-202;
+      if(ty+170>H)ty=H-174;
+      if(ty<4)ty=4;
+      return(<div style={{position:"absolute",left:tx,top:ty,width:182,background:"rgba(22,27,34,0.97)",borderRadius:10,border:"1px solid #30363d",boxShadow:"0 4px 20px rgba(0,0,0,0.5)",pointerEvents:"none",overflow:"hidden",zIndex:50}}>
+        {hoverPerson.photo
+          ?<img src={hoverPerson.photo.url} style={{width:"100%",height:110,objectFit:"cover",display:"block"}} onError={function(e){e.target.style.display="none";}}/>
+          :<div style={{height:36,background:"rgba(74,158,255,0.06)",display:"flex",alignItems:"center",justifyContent:"center",color:"#8b949e",fontSize:16}}>📷</div>}
+        <div style={{padding:"7px 9px 8px"}}>
+          <div style={{fontSize:12,fontWeight:600,color:"#c9d1d9",marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{hoverPerson.name}</div>
+          {hoverPerson.place&&<div style={{fontSize:10,color:"#8b949e",marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{hoverPerson.place}</div>}
+          {hoverPerson.photo&&hoverPerson.photo.label&&<div style={{fontSize:9,color:"#66d9a0"}}>{hoverPerson.photo.label}{hoverPerson.photo.year?" · "+hoverPerson.photo.year:""}</div>}
+          {hoverPerson.photoCount>1&&<div style={{fontSize:9,color:"#4a9eff",marginTop:2}}>{hoverPerson.photoCount} foton totalt</div>}
+        </div>
+      </div>);
+    })()}
     </div>);
 }
 
@@ -721,8 +741,10 @@ function MapView(props) {
   var tileCache=useRef({});
   var layerRef=useRef("osm");
   var tileErrRef=useRef({ok:0,err:0});
-  var individuals=props.individuals,year=props.year,selId=props.selectedId,onSelect=props.onSelect,extraLocs=props.extraLocs||{},buildPersonLocations=props.buildPersonLocations,focusLat=props.focusLat,focusLon=props.focusLon,focusZoom=props.focusZoom,followPersonId=props.followPersonId,followYear=props.followYear;
+  var individuals=props.individuals,year=props.year,selId=props.selectedId,onSelect=props.onSelect,extraLocs=props.extraLocs||{},buildPersonLocations=props.buildPersonLocations,focusLat=props.focusLat,focusLon=props.focusLon,focusZoom=props.focusZoom,followPersonId=props.followPersonId,followYear=props.followYear,photoUrls=props.photoUrls||{};
   var s13=useState("osm"),mapLayer=s13[0],setMapLayer=s13[1];
+  var s14=useState(null),hoverPerson=s14[0],setHoverPerson=s14[1]; // {id,name,x,y,photos}
+  var hoverRef=useRef(null); // debounce timer
 
   // Tile sources
   var lmKeyInit=function(){try{var r=localStorage.getItem('slakttrads_lmkey');return r||"";}catch(e){return "";}};
@@ -1048,15 +1070,38 @@ function MapView(props) {
     }
     function onDown(e){if(e.button===0){v.dragging=true;v.sx=e.clientX;v.sy=e.clientY;v.scx=v.cx;v.scy=v.cy;}}
     function onMove(e){
-      if(!v.dragging)return;
-      var ct=cv.parentElement,W=ct.clientWidth,H=ct.clientHeight;
-      var z=v.zoom;
-      var dx=(e.clientX-v.sx)/256,dy=(e.clientY-v.sy)/256;
-      var scale=Math.pow(2,z-Math.round(z));
-      var cxT=lon2tileX(v.scx,z),cyT=lat2tileY(v.scy,z);
-      v.cx=tileX2lon(cxT-dx/scale,z);
-      v.cy=tileY2lat(cyT-dy/scale,z);
-      drawMap();
+      var r=cv.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;
+      if(v.dragging){
+        var ct=cv.parentElement,W=ct.clientWidth,H=ct.clientHeight;
+        var z=v.zoom;
+        var dx=(e.clientX-v.sx)/256,dy=(e.clientY-v.sy)/256;
+        var scale=Math.pow(2,z-Math.round(z));
+        var cxT=lon2tileX(v.scx,z),cyT=lat2tileY(v.scy,z);
+        v.cx=tileX2lon(cxT-dx/scale,z);
+        v.cy=tileY2lat(cyT-dy/scale,z);
+        drawMap();
+        setHoverPerson(null);
+        return;
+      }
+      // Hover detection
+      var found=null;
+      for(var hi=0;hi<clickAreas.current.length;hi++){
+        var a=clickAreas.current[hi],hdx=mx-a.x,hdy=my-a.y;
+        if(hdx*hdx+hdy*hdy<(a.r+6)*(a.r+6)){found=a;break;}
+      }
+      if(found){
+        var ind=individuals&&individuals[found.id];
+        if(ind){
+          var photos=photoUrls[found.id]||[];
+          // Find best photo: place photo first, then portrait
+          var placePhoto=photos.find(function(p){return p.type==="place";});
+          var portraitPhoto=photos.find(function(p){return p.type==="portrait";});
+          var mainPhoto=placePhoto||portraitPhoto||photos[0]||null;
+          setHoverPerson({id:found.id,name:ind.name,x:found.x,y:found.y,photo:mainPhoto,photoCount:photos.length,place:ind.birthPlace||""});
+        }
+      } else {
+        setHoverPerson(null);
+      }
     }
     function onUp(){v.dragging=false;drawMap();}
     function onClick(e){
@@ -2263,7 +2308,7 @@ function GenealogyApp(){
         </div>
         <div style={{flex:1,position:"relative",minHeight:0}}>
           {rightView==="map"&&<div style={{position:"relative",width:"100%",height:"100%"}}>
-            <MapView individuals={parsedData.individuals} year={sliderYear} rangeStart={effStart} rangeEnd={effEnd} selectedId={sel?sel.id:null} onSelect={mapSel} isSample={isSample} extraLocs={extraLocs} buildPersonLocations={buildPersonLocations} focusLat={mapFocus?mapFocus.lat:null} focusLon={mapFocus?mapFocus.lon:null} focusZoom={mapFocus?mapFocus.zoom:null} followPersonId={sel?sel.id:null} followYear={sliderYear}/>
+            <MapView individuals={parsedData.individuals} year={sliderYear} rangeStart={effStart} rangeEnd={effEnd} selectedId={sel?sel.id:null} onSelect={mapSel} isSample={isSample} extraLocs={extraLocs} buildPersonLocations={buildPersonLocations} focusLat={mapFocus?mapFocus.lat:null} focusLon={mapFocus?mapFocus.lon:null} focusZoom={mapFocus?mapFocus.zoom:null} followPersonId={sel?sel.id:null} followYear={sliderYear} photoUrls={photoUrls}/>
             {panelPerson&&(<div style={{position:"absolute",bottom:8,left:8,width:500,background:C.panel+"f5",borderRadius:14,border:"1px solid "+C.border,zIndex:10,backdropFilter:"blur(14px)",overflow:"hidden",pointerEvents:"all"}}>
               <div style={{padding:"10px 12px 8px",background:"linear-gradient(135deg,"+(panelPerson.sex==="M"?C.male:panelPerson.sex==="F"?C.female:C.unknown)+"15,transparent)",borderBottom:"1px solid "+C.border}}>
                 <div style={{display:"flex",alignItems:"center",gap:8}}>
