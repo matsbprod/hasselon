@@ -730,13 +730,12 @@ function MapView(props) {
   var sLMconf=useState(false),showLMConf=sLMconf[0],setShowLMConf=sLMconf[1];
 
   // WMS BBOX helper — sends minLon,minLat,maxLon,maxLat to proxy
-  // Proxy handles axis-flipping for WMS 1.3.0
+  // Each tile is 256px, so viewport spans W/256 tiles wide and H/256 tiles tall
   function wmsBbox(v,W,H){
     var z=v.zoom;
     var cxT=lon2tileX(v.cx,z),cyT=lat2tileY(v.cy,z);
-    var minLon=tileX2lon(cxT-W/512,z),maxLon=tileX2lon(cxT+W/512,z);
-    var maxLat=tileY2lat(cyT-H/512,z),minLat=tileY2lat(cyT+H/512,z);
-    // Clamp to valid WGS84 range
+    var minLon=tileX2lon(cxT-W/256,z),maxLon=tileX2lon(cxT+W/256,z);
+    var maxLat=tileY2lat(cyT-H/256,z),minLat=tileY2lat(cyT+H/256,z);
     minLat=Math.max(-85,minLat);maxLat=Math.min(85,maxLat);
     return minLon.toFixed(6)+","+minLat.toFixed(6)+","+maxLon.toFixed(6)+","+maxLat.toFixed(6);
   }
@@ -746,13 +745,13 @@ function MapView(props) {
     topo:{name:"Topo",url:function(z,x,y){var s=["a","b","c"][(x+y)%3];return"https://"+s+".tile.opentopomap.org/"+z+"/"+x+"/"+y+".png";},attr:"© OpenTopoMap"},
     cycle:{name:"Terrain",url:function(z,x,y){return"https://tile.thunderforest.com/landscape/"+z+"/"+x+"/"+y+".png?apikey=6170aad10dfd42a38d4d8c709a536f38";},attr:"© Thunderforest"},
     ekon:{name:"Ekon.karta",type:"wms",
-      wmsUrl:function(bbox,W,H){return"/api/wms-proxy?service=ekon&bbox="+encodeURIComponent(bbox)+"&w="+Math.round(W*2)+"&h="+Math.round(H*2);},
+      wmsUrl:function(bbox,W,H){return"/api/wms-proxy?service=ekon&bbox="+encodeURIComponent(bbox)+"&w="+Math.round(W)+"&h="+Math.round(H);},
       attr:"© Lantmäteriet CC0"},
     ortho60:{name:"Flygfoto 1960",type:"wms",
-      wmsUrl:function(bbox,W,H){return"/api/wms-proxy?service=ortho60&bbox="+encodeURIComponent(bbox)+"&w="+Math.round(W*2)+"&h="+Math.round(H*2);},
+      wmsUrl:function(bbox,W,H){return"/api/wms-proxy?service=ortho60&bbox="+encodeURIComponent(bbox)+"&w="+Math.round(W)+"&h="+Math.round(H);},
       attr:"© Lantmäteriet CC0"},
     ortho75:{name:"Flygfoto 1975",type:"wms",
-      wmsUrl:function(bbox,W,H){return"/api/wms-proxy?service=ortho75&bbox="+encodeURIComponent(bbox)+"&w="+Math.round(W*2)+"&h="+Math.round(H*2);},
+      wmsUrl:function(bbox,W,H){return"/api/wms-proxy?service=ortho75&bbox="+encodeURIComponent(bbox)+"&w="+Math.round(W)+"&h="+Math.round(H);},
       attr:"© Lantmäteriet CC0"},
   };
 
