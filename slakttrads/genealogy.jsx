@@ -725,10 +725,32 @@ function MapView(props) {
   var s13=useState("osm"),mapLayer=s13[0],setMapLayer=s13[1];
 
   // Tile sources
+  var lmKeyInit=function(){try{var r=localStorage.getItem('slakttrads_lmkey');return r||"";}catch(e){return "";}};
+  var sLM=useState(lmKeyInit()),lmKey=sLM[0],setLmKey=sLM[1];
+  var sLMconf=useState(false),showLMConf=sLMconf[0],setShowLMConf=sLMconf[1];
+
+  // WMS BBOX helper (EPSG:4326)
+  function wmsBbox(v,W,H){
+    var z=v.zoom;
+    var cxT=lon2tileX(v.cx,z),cyT=lat2tileY(v.cy,z);
+    var minLon=tileX2lon(cxT-W/512,z),maxLon=tileX2lon(cxT+W/512,z);
+    var maxLat=tileY2lat(cyT-H/512,z),minLat=tileY2lat(cyT+H/512,z);
+    return minLon.toFixed(6)+","+minLat.toFixed(6)+","+maxLon.toFixed(6)+","+maxLat.toFixed(6);
+  }
+
   var TILE_SOURCES={
-    osm:{name:"Standard",url:function(z,x,y){var s=["a","b","c"][(x+y)%3];return"https://"+s+".tile.openstreetmap.org/"+z+"/"+x+"/"+y+".png";},attr:"\u00A9 OpenStreetMap"},
-    topo:{name:"Topo",url:function(z,x,y){var s=["a","b","c"][(x+y)%3];return"https://"+s+".tile.opentopomap.org/"+z+"/"+x+"/"+y+".png";},attr:"\u00A9 OpenTopoMap"},
-    cycle:{name:"Terrain",url:function(z,x,y){return"https://tile.thunderforest.com/landscape/"+z+"/"+x+"/"+y+".png?apikey=6170aad10dfd42a38d4d8c709a536f38";},attr:"\u00A9 Thunderforest"},
+    osm:{name:"Standard",url:function(z,x,y){var s=["a","b","c"][(x+y)%3];return"https://"+s+".tile.openstreetmap.org/"+z+"/"+x+"/"+y+".png";},attr:"© OpenStreetMap"},
+    topo:{name:"Topo",url:function(z,x,y){var s=["a","b","c"][(x+y)%3];return"https://"+s+".tile.opentopomap.org/"+z+"/"+x+"/"+y+".png";},attr:"© OpenTopoMap"},
+    cycle:{name:"Terrain",url:function(z,x,y){return"https://tile.thunderforest.com/landscape/"+z+"/"+x+"/"+y+".png?apikey=6170aad10dfd42a38d4d8c709a536f38";},attr:"© Thunderforest"},
+    ekon:{name:"Ekon.karta",type:"wms",
+      wmsUrl:function(bbox,W,H){return"https://ext-geodata-raster.lansstyrelsen.se/arcgis/services/RasterNationellt/lst_ext_ekonomiska_kartan/ImageServer/WMSServer?SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0&LAYERS=0&STYLES=&CRS=EPSG:4326&FORMAT=image/png&TRANSPARENT=FALSE&WIDTH="+Math.round(W*2)+"&HEIGHT="+Math.round(H*2)+"&BBOX="+bbox;},
+      attr:"© Lantmäteriet CC0"},
+    ortho60:{name:"Flygfoto 1960",type:"wms",
+      wmsUrl:function(bbox,W,H,key){return key?"https://api.lantmateriet.se/historiska-ortofoton/wms/v1/token/"+key+"/?SERVICE=WMS&REQUEST=GetMap&VERSION=1.1.1&LAYERS=OI.Histortho_60&STYLES=&SRS=EPSG:4326&FORMAT=image/jpeg&WIDTH="+Math.round(W*2)+"&HEIGHT="+Math.round(H*2)+"&BBOX="+bbox:null;},
+      attr:"© Lantmäteriet CC0",needsKey:true},
+    ortho75:{name:"Flygfoto 1975",type:"wms",
+      wmsUrl:function(bbox,W,H,key){return key?"https://api.lantmateriet.se/historiska-ortofoton/wms/v1/token/"+key+"/?SERVICE=WMS&REQUEST=GetMap&VERSION=1.1.1&LAYERS=OI.Histortho_75&STYLES=&SRS=EPSG:4326&FORMAT=image/jpeg&WIDTH="+Math.round(W*2)+"&HEIGHT="+Math.round(H*2)+"&BBOX="+bbox:null;},
+      attr:"© Lantmäteriet CC0",needsKey:true},
   };
 
   // Slippy map math (Web Mercator)
@@ -796,6 +818,38 @@ function MapView(props) {
 
     ctx.fillStyle="#a8d5f2";ctx.fillRect(0,0,W,H);
 
+    var srcDef=TILE_SOURCES[layer];
+    if(srcDef&&srcDef.type==="wms"){
+      // WMS: single image for whole viewport
+      var bbox=wmsBbox(v,W,H);
+      var wmsUrl=srcDef.wmsUrl(bbox,W,H,lmKey);
+      if(!wmsUrl){
+        ctx.fillStyle="rgba(40,40,40,0.85)";ctx.fillRect(0,0,W,H);
+        ctx.fillStyle="#ffa94d";ctx.font="bold 12px Arial";ctx.textAlign="center";ctx.textBaseline="middle";
+        ctx.fillText("Lantmäteriets flygfoton kräver API-nyckel — klicka \u2699\uFE0F LM-nyckel",W/2,H/2);
+      } else {
+        var wmsKey=layer+"/wms/"+bbox.substring(0,20);
+        var wmsCache=tileCache.current[wmsKey];
+        if(wmsCache&&wmsCache.loaded){ctx.drawImage(wmsCache,0,0,W,H);}
+        else if(!wmsCache){
+          ctx.fillStyle="#dce8dc";ctx.fillRect(0,0,W,H);
+          ctx.fillStyle="#7a9a7a";ctx.font="11px Arial";ctx.textAlign="center";ctx.textBaseline="middle";
+          ctx.fillText("Laddar "+srcDef.name+"...",W/2,H/2);
+          var wImg=new Image();wImg.crossOrigin="anonymous";wImg.loaded=false;
+          tileCache.current[wmsKey]=wImg;
+          wImg.onload=function(){wImg.loaded=true;drawMap();};
+          wImg.onerror=function(){
+            tileCache.current[wmsKey]=null;
+            ctx.fillStyle="rgba(200,40,40,0.85)";ctx.fillRect(0,0,W,H);
+            ctx.fillStyle="#fff";ctx.font="12px Arial";ctx.textAlign="center";ctx.textBaseline="middle";
+            ctx.fillText("WMS-fel — kontrollera nyckel eller nätverksåtkomst",W/2,H/2);
+          };
+          wImg.src=wmsUrl;
+        } else {
+          ctx.fillStyle="#dce8dc";ctx.fillRect(0,0,W,H);
+        }
+      }
+    } else {
     var scale=Math.pow(2,v.zoom-z);
     for(var tx=startTX;tx<startTX+tilesX+1;tx++){
       for(var ty=startTY;ty<startTY+tilesY+1;ty++){
@@ -810,6 +864,7 @@ function MapView(props) {
         else{ctx.fillStyle="#c8e6c0";ctx.fillRect(px,py,tileSize,tileSize);ctx.strokeStyle="#b0d8a0";ctx.strokeRect(px,py,tileSize,tileSize);loadTile(z,wrappedTX,ty,layer,function(){drawMap();});}
       }
     }
+    } // end tile branch
 
     // Attribution
     var srcInfo=TILE_SOURCES[layer]||TILE_SOURCES.osm;
@@ -940,6 +995,10 @@ function MapView(props) {
   useEffect(function(){
     var cv=cvRef.current;if(!cv)return;
     var v=viewRef.current;
+    function clearWmsCache(){
+      var tc=tileCache.current;
+      Object.keys(tc).forEach(function(k){if(k.indexOf('/wms/')>=0)delete tc[k];});
+    }
     function onWheel(e){
       e.preventDefault();
       var ct=cv.parentElement,W=ct.clientWidth,H=ct.clientHeight;
@@ -963,7 +1022,7 @@ function MapView(props) {
       v.cy=tileY2lat(cyT-dy/scale,z);
       drawMap();
     }
-    function onUp(){v.dragging=false;}
+    function onUp(){v.dragging=false;clearWmsCache();}
     function onClick(e){
       if(Math.abs(e.clientX-(v.sx||0))>4||Math.abs(e.clientY-(v.sy||0))>4)return;
       var r=cv.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;
@@ -1008,7 +1067,16 @@ function MapView(props) {
   return (<div style={{width:"100%",height:"100%",position:"relative"}}>
     <canvas ref={cvRef} style={{width:"100%",height:"100%",display:"block",cursor:"grab"}}/>
     <div style={{position:"absolute",top:8,right:8,display:"flex",gap:2,background:"rgba(255,255,255,0.9)",borderRadius:6,padding:2,boxShadow:"0 1px 4px rgba(0,0,0,0.2)"}}>
-      {Object.keys(TILE_SOURCES).map(function(k){return <button key={k} onClick={function(){tileErrRef.current={ok:0,err:0};setMapLayer(k);}} style={{padding:"3px 8px",fontSize:9,fontWeight:mapLayer===k?700:400,border:"none",borderRadius:4,cursor:"pointer",background:mapLayer===k?"#4a9eff":"transparent",color:mapLayer===k?"#fff":"#555"}}>{TILE_SOURCES[k].name}</button>;})}
+      {Object.keys(TILE_SOURCES).map(function(k){var sdef=TILE_SOURCES[k];return(<button key={k} onClick={function(){tileErrRef.current={ok:0,err:0};Object.keys(tileCache.current).forEach(function(tk){if(tk.indexOf('/wms/')>=0)delete tileCache.current[tk];});setMapLayer(k);}} style={{padding:"3px 8px",fontSize:9,fontWeight:mapLayer===k?700:400,border:"none",borderRadius:4,cursor:"pointer",background:mapLayer===k?"#4a9eff":"transparent",color:mapLayer===k?(sdef.needsKey&&!lmKey?"#ffa94d":"#fff"):(sdef.needsKey&&!lmKey?"#ffa94d55":"#555")}}>{sdef.name}{sdef.needsKey&&!lmKey?" 🔑":""}</button>);})}
+      <button onClick={function(){setShowLMConf(!showLMConf);}} style={{marginLeft:4,padding:"3px 8px",fontSize:9,border:"none",borderRadius:4,cursor:"pointer",background:showLMConf?"rgba(255,169,77,0.3)":"transparent",color:"#ffa94d"}} title="Lantmäteriets API-nyckel">⚙️ LM-nyckel</button>
+      {showLMConf&&(<div style={{position:"absolute",top:32,right:4,background:"#161b22",border:"1px solid #30363d",borderRadius:8,padding:"10px 12px",zIndex:50,minWidth:280,boxShadow:"0 4px 20px rgba(0,0,0,0.5)"}}>
+        <div style={{fontSize:10,color:"#8b949e",marginBottom:6,fontWeight:700,letterSpacing:1,textTransform:"uppercase"}}>Lantmäteriet API-nyckel</div>
+        <input type="password" value={lmKey} placeholder="Klistra in din LM-nyckel..."
+          onChange={function(e){setLmKey(e.target.value);try{localStorage.setItem('slakttrads_lmkey',e.target.value);}catch(ex){}}}
+          style={{width:"100%",boxSizing:"border-box",background:"rgba(255,255,255,0.05)",border:"1px solid #30363d",borderRadius:5,padding:"5px 8px",color:"#c9d1d9",fontSize:11,outline:"none"}}/>
+        <div style={{fontSize:9,color:"#8b949e",marginTop:4}}>Krävs för Flygfoto 1960/1975. Hämta på opendata.lantmateriet.se</div>
+        {lmKey&&<div style={{fontSize:9,color:"#66d9a0",marginTop:3}}>✓ Nyckel sparad</div>}
+      </div>)}
       <button onClick={fitAll} style={{padding:"3px 8px",fontSize:9,fontWeight:600,border:"none",borderRadius:4,cursor:"pointer",background:"#66d9a0",color:"#fff"}} title="Zoom to show all people">Fit All</button>
     </div>
   </div>);
