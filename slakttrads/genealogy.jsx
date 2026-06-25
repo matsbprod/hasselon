@@ -839,7 +839,12 @@ function MapView(props) {
           ctx.fillStyle="#7a9a7a";ctx.font="11px Arial";ctx.textAlign="center";ctx.textBaseline="middle";
           ctx.fillText("Laddar "+srcDef.name+"...",W/2,H/2);
         } else if(wmsCache&&wmsCache.loaded){
-          ctx.drawImage(wmsCache,0,0,W,H);
+          // Project the stored bbox corners to canvas pixels
+          var bboxParts=(wmsCache._bbox||bbox).split(",").map(Number);
+          var bMinLon=bboxParts[0],bMinLat=bboxParts[1],bMaxLon=bboxParts[2],bMaxLat=bboxParts[3];
+          var pTL=project(bMaxLat,bMinLon,W,H,v);
+          var pBR=project(bMinLat,bMaxLon,W,H,v);
+          ctx.drawImage(wmsCache,pTL.x,pTL.y,pBR.x-pTL.x,pBR.y-pTL.y);
         } else if(!wmsCache){
           tileCache.current[wmsKey]="loading";
           ctx.fillStyle="#dce8dc";ctx.fillRect(0,0,W,H);
@@ -857,6 +862,8 @@ function MapView(props) {
             return resp.blob().then(function(blob){
               var url2=URL.createObjectURL(blob);
               var img2=new Image();img2.loaded=false;
+              // Store bbox with image so we can project it correctly on draw
+              img2._bbox=bbox;
               img2.onload=function(){img2.loaded=true;tileCache.current[wmsKey]=img2;drawMap();};
               img2.src=url2;
             });
