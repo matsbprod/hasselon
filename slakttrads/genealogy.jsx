@@ -1335,17 +1335,12 @@ function PhotoManager(props){
         Object.keys(newUrls).forEach(function(k){
           newUrls[k].sort(function(a,b){return (a._seq||0)-(b._seq||0);});
         });
-        // Merge with existing localStorage photos (prefer GitHub)
-        setPhotoUrls(function(prev){
-          var merged=Object.assign({},prev);
-          Object.keys(newUrls).forEach(function(k){
-            // Keep any locally-added photos not in GitHub, prepend GitHub ones
-            var local=(merged[k]||[]).filter(function(p){return p.url.indexOf("raw.githubusercontent")<0;});
-            merged[k]=newUrls[k].concat(local);
-          });
-          try{localStorage.setItem('slakttrads_photos',JSON.stringify(merged));}catch(e){}
-          return merged;
-        });
+        // Replace all — don't merge with old localStorage, use GitHub as source of truth
+        var merged={};
+        Object.keys(newUrls).forEach(function(k){merged[k]=newUrls[k];});
+        console.log("Setting photoUrls:",Object.keys(merged).map(function(k){return k+":"+merged[k].length+" foton";}));
+        try{localStorage.setItem('slakttrads_photos',JSON.stringify(merged));}catch(e){}
+        setPhotoUrls(merged);
         var total=items.length;
         var persons=Object.keys(newUrls).length;
         var idList=Object.keys(newUrls).slice(0,6).join(", ");
