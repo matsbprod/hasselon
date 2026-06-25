@@ -138,6 +138,9 @@ function computeLayout(individuals, families) {
 var GEOCODE={
   // === Göteborg city parishes/areas ===
   "göteborg":{lat:57.7089,lon:11.9746},"gbg":{lat:57.7089,lon:11.9746},"masthugget":{lat:57.6970,lon:11.9380},"masthugg":{lat:57.6970,lon:11.9380},"haga":{lat:57.6975,lon:11.9540},"karl johan":{lat:57.7010,lon:11.9600},"annedal":{lat:57.7000,lon:11.9470},"lundby":{lat:57.7150,lon:11.9400},"johanneberg":{lat:57.6890,lon:11.9780},"örgryte":{lat:57.6930,lon:12.0050},"härlanda":{lat:57.7100,lon:12.0200},"vasa":{lat:57.6970,lon:11.9750},"angered":{lat:57.7920,lon:12.0490},"oskar fredrik":{lat:57.6910,lon:11.9490},"oscar fredrik":{lat:57.6910,lon:11.9490},"domkyrko":{lat:57.7047,lon:11.9668},"backa":{lat:57.7500,lon:11.9600},"gamlestad":{lat:57.7240,lon:12.0050},"nylöse":{lat:57.7240,lon:12.0050},"västra frölunda":{lat:57.6490,lon:11.9130},"högsbo":{lat:57.6580,lon:11.9350},"tynnered":{lat:57.6450,lon:11.8850},"biskopsgård":{lat:57.7280,lon:11.9100},"brämaregård":{lat:57.7150,lon:11.9200},"kortedala":{lat:57.7530,lon:12.0430},"kristine":{lat:57.7050,lon:11.9670},"sankt pauli":{lat:57.7000,lon:11.9600},"älvsborg":{lat:57.6890,lon:11.9100},
+  // === Exakta adresser Göteborg ===
+  "biskopsgatan 7":{lat:57.7175,lon:11.9345},"biskopsgatan":{lat:57.7175,lon:11.9345},
+  "lundby (o)":{lat:57.7175,lon:11.9345},"lundby (göteborg)":{lat:57.7175,lon:11.9345},
   // === Orust island ===
   "myckleby":{lat:58.1100,lon:11.6800},"torp":{lat:58.1400,lon:11.6200},"tölläs":{lat:58.1300,lon:11.6400},"töllås":{lat:58.1300,lon:11.6400},"röra":{lat:58.1000,lon:11.7200},"långelanda":{lat:58.0700,lon:11.7100},"stenshult":{lat:58.1350,lon:11.6300},"gåre":{lat:58.1200,lon:11.6100},"resteröd":{lat:58.0700,lon:11.7400},"ottestala":{lat:58.1050,lon:11.6900},"syltenäs":{lat:58.1150,lon:11.6750},"buvenäs":{lat:58.1080,lon:11.6600},"grindsby":{lat:58.1000,lon:11.6500},"krogane":{lat:58.1000,lon:11.6900},"naddebacken":{lat:58.1250,lon:11.6350},"brunnefjäll":{lat:58.0950,lon:11.6700},"skörbo":{lat:58.0900,lon:11.6800},"hogen":{lat:58.1450,lon:11.6150},"ström":{lat:58.1350,lon:11.6100},"blibrä":{lat:58.1380,lon:11.6250},"söbben":{lat:58.1200,lon:11.6500},"medstugan":{lat:58.1300,lon:11.6200},"höggeröd":{lat:58.1100,lon:11.6300},"andenäs":{lat:58.1050,lon:11.6600},"krogeröd":{lat:58.0950,lon:11.6900},"bogane":{lat:58.1000,lon:11.6700},"hasselö":{lat:58.0300,lon:11.5800},"morlanda":{lat:58.0850,lon:11.5400},"tegneby":{lat:58.0920,lon:11.6200},"stala":{lat:58.0700,lon:11.5700},"gullholmen":{lat:58.1750,lon:11.3950},"fidjie":{lat:58.0800,lon:11.7300},"fidji":{lat:58.0800,lon:11.7300},
   // === Bohuslän coast & nearby ===
@@ -198,10 +201,29 @@ function buildPersonLocations(ind, extraLocs){
   return locs;
 }
 
-function kartbildUrl(lat,lon,layer){
+function kartbildUrl(lat,lon,layer,zoom){
   if(!lat||!lon)return null;
-  return 'https://kartbild.com/#15/'+lat.toFixed(4)+'/'+lon.toFixed(4)+'/'+layer;
+  return 'https://kartbild.com/#'+(zoom||15)+'/'+lat.toFixed(4)+'/'+lon.toFixed(4)+'/'+layer;
 }
+function placeZoom(place){
+  // Returns appropriate kartbild zoom level based on place name
+  if(!place) return 15;
+  var p=place.toLowerCase();
+  // Specific address → zoom in close
+  if(p.match(/gatan|vägen|torget|platsen|allén|\d+,/)) return 16;
+  // Farm/homestead names
+  if(p.match(/gård|säteri|torp|husegård|husegård/)) return 16;
+  // Small hamlet/village
+  if(p.match(/by\b|näs\b|udde\b|backe\b|vik\b|dal\b/)) return 15;
+  // Parish/socken
+  if(p.match(/socken|församling|\(o\)|\(n\)|\(p\)|\(r\)|\(s\)/)) return 14;
+  // City district
+  if(p.indexOf("göteborg")>=0||p.indexOf("stockholm")>=0||p.indexOf("malmö")>=0) return 13;
+  // Island
+  if(p.indexOf("orust")>=0||p.indexOf("tjörn")>=0) return 11;
+  return 15;
+}
+
 function lookupLocation(place){
   if(!place)return null;
   var p=place.toLowerCase();
@@ -1058,7 +1080,7 @@ function PlacesLeafletMap({locs,editIdx,onCoords}){
     setTimeout(function(){if(leafRef.current)leafRef.current.invalidateSize();},100);
   },[locs,editIdx]);
 
-  return <div ref={mapRef} style={{height:400,borderRadius:8,overflow:"hidden",border:"1px solid #30363d",marginBottom:12}}/>;
+  return <div ref={mapRef} style={{height:800,borderRadius:8,overflow:"hidden",border:"1px solid #30363d",marginBottom:12}}/>;
 }
 
 // ═══ PLACES EDITOR ═══════════════════════════════════════
@@ -1764,14 +1786,39 @@ function GenealogyApp(){
         });
       }
     }
-    // Small delay to ensure THREE scene is initialised before we push textures
-    setTimeout(function(){
-      toLoad.forEach(function(item){loadOne(item.id,item.src);});
-    },300);
+    // Retry until THREE is available (scene may not be active yet)
+    function tryLoad(attempts){
+      if(typeof THREE!=="undefined"){
+        toLoad.forEach(function(item){loadOne(item.id,item.src);});
+      } else if(attempts>0){
+        setTimeout(function(){tryLoad(attempts-1);},500);
+      }
+    }
+    tryLoad(20); // retry up to 10s
   },[photoUrls]);
   var s16=_s(0),viewTrigger=s16[0],setViewTrigger=s16[1];
   var s17=_s("3d"),rightView=s17[0],setRightView=s17[1];
-  useEffect(function(){if(rightView==="3d"){setTimeout(function(){window.dispatchEvent(new Event("resize"));},60);}},[rightView]);
+  useEffect(function(){
+    if(rightView==="3d"){
+      setTimeout(function(){window.dispatchEvent(new Event("resize"));},60);
+      // Re-trigger texture loading now that THREE scene is active
+      setTimeout(function(){
+        if(typeof THREE==="undefined"||!Object.keys(photoUrls).length) return;
+        for(var k in photoUrls){
+          var arr3=photoUrls[k]||[];
+          var first3=arr3.find(function(p){return p.type==="portrait"&&p.label&&(p.label.indexOf("vuxen")>=0||p.label.indexOf("adult")>=0);})||arr3.find(function(p){return p.type==="portrait";})||arr3[0];
+          if(first3&&first3.url){
+            (function(id,src){
+              var loader3=new THREE.TextureLoader();loader3.crossOrigin="anonymous";
+              loader3.load(src,function(tex3){
+                setPhotoTex(function(prev){var n={};for(var k4 in prev)n[k4]=prev[k4];n[id]=tex3;return n;});
+              });
+            })(k,first3.url);
+          }
+        }
+      },800);
+    }
+  },[rightView]);
   var s18=_s("ancestors"),pedigreeMode=s18[0],setPedigreeMode=s18[1];
   var s19=_s(null),mapFocus=s19[0],setMapFocus=s19[1]; // {lat,lon,zoom}
 
@@ -1781,6 +1828,7 @@ function GenealogyApp(){
     var p=placeName.toLowerCase();
     // Big cities — zoom in closer
     if(p.indexOf("göteborg")>=0||p.indexOf("stockholm")>=0||p.indexOf("malmö")>=0) return 12;
+    if(p.indexOf("lundby")>=0||p.indexOf("biskopsgatan")>=0) return 14;
     // Islands / municipalities on Orust size
     if(p.indexOf("orust")>=0||p.indexOf("tjörn")>=0||p.indexOf("marstrand")>=0) return 10;
     // Socken/parish level
@@ -2055,9 +2103,12 @@ function GenealogyApp(){
           <div style={{padding:"8px 14px 10px",fontSize:12,display:"grid",gap:4}}>
             {panelPerson.birthDate&&<div><span style={{color:C.dim}}>Född </span>{panelPerson.birthDate}{panelPerson.birthPlace?" · "+panelPerson.birthPlace:""}</div>}
               {panelPerson.birthPlace&&lookupLocation(panelPerson.birthPlace)&&(<div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:4}}>
-                <a href={kartbildUrl((lookupLocation(panelPerson.birthPlace)||{}).lat,(lookupLocation(panelPerson.birthPlace)||{}).lon,0x10000)} target="_blank" style={{fontSize:9,padding:"2px 6px",background:"rgba(255,200,50,0.15)",border:"1px solid rgba(255,200,50,0.4)",borderRadius:3,color:"#ffd060",textDecoration:"none"}}>📜 Ekon.karta</a>
-                <a href={kartbildUrl((lookupLocation(panelPerson.birthPlace)||{}).lat,(lookupLocation(panelPerson.birthPlace)||{}).lon,0x100)} target="_blank" style={{fontSize:9,padding:"2px 6px",background:"rgba(100,180,255,0.15)",border:"1px solid rgba(100,180,255,0.4)",borderRadius:3,color:"#64b4ff",textDecoration:"none"}}>✈ Flygfoto 1960</a>
-                <a href={kartbildUrl((lookupLocation(panelPerson.birthPlace)||{}).lat,(lookupLocation(panelPerson.birthPlace)||{}).lon,0x200)} target="_blank" style={{fontSize:9,padding:"2px 6px",background:"rgba(100,180,255,0.15)",border:"1px solid rgba(100,180,255,0.4)",borderRadius:3,color:"#64b4ff",textDecoration:"none"}}>✈ Flygfoto 1975</a>
+                {(function(){var _loc=lookupLocation(panelPerson.birthPlace)||{};var _z=placeZoom(panelPerson.birthPlace);return [
+                  ["📜 Ekon.karta",0x10000,"rgba(255,200,50,0.15)","rgba(255,200,50,0.4)","#ffd060"],
+                  ["✈ Flygfoto 1960",0x100,"rgba(100,180,255,0.15)","rgba(100,180,255,0.4)","#64b4ff"],
+                  ["✈ Flygfoto 1975",0x200,"rgba(100,180,255,0.15)","rgba(100,180,255,0.4)","#64b4ff"],
+                  ["🗺 Topo",0x1000,"rgba(100,200,100,0.15)","rgba(100,200,100,0.4)","#80d080"]
+                ].map(function(kb){return <a key={kb[0]} href={kartbildUrl(_loc.lat,_loc.lon,kb[1],_z)} target="_blank" style={{fontSize:9,padding:"2px 6px",background:kb[2],border:"1px solid "+kb[3],borderRadius:3,color:kb[4],textDecoration:"none"}}>{kb[0]}</a>;})})()}
               </div>)}
               {panelPerson.deathDate&&<div><span style={{color:C.dim}}>Död </span>{panelPerson.deathDate}{panelPerson.deathPlace?" · "+panelPerson.deathPlace:""}</div>}
           </div>
@@ -2121,7 +2172,7 @@ function GenealogyApp(){
               {panelPerson&&panelPerson.birthPlace&&lookupLocation(panelPerson.birthPlace)&&(<div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"center",marginTop:8}}>
                 {[["📜 Ekonomisk","0x10000"],["✈ Flygfoto 1960","0x100"],["✈ Flygfoto 1975","0x200"],["🗺 Topo","0x1000"]].map(function(kb){
                   var loc=lookupLocation(panelPerson.birthPlace);
-                  return <a key={kb[0]} href={"https://kartbild.com/#15/"+loc.lat.toFixed(4)+"/"+loc.lon.toFixed(4)+"/"+kb[1]} target="_blank" style={{padding:"10px 16px",background:"rgba(74,158,255,0.15)",border:"1px solid rgba(74,158,255,0.4)",borderRadius:8,color:C.accent,textDecoration:"none",fontSize:12,cursor:"pointer"}}>{kb[0]}</a>;
+                  return <a key={kb[0]} href={kartbildUrl(loc.lat,loc.lon,kb[1],placeZoom(panelPerson.birthPlace))} target="_blank" style={{padding:"10px 16px",background:"rgba(74,158,255,0.15)",border:"1px solid rgba(74,158,255,0.4)",borderRadius:8,color:C.accent,textDecoration:"none",fontSize:12,cursor:"pointer"}}>{kb[0]}</a>;
                 })}
               </div>)}
               {panelPerson&&(!panelPerson.birthPlace||!lookupLocation(panelPerson.birthPlace))&&<div style={{fontSize:11,color:C.dim,marginTop:8}}>{panelPerson.name} — födelseort ej i geocoding-registret</div>}
