@@ -707,38 +707,8 @@ function FanView(props){
     return function(){cv.removeEventListener("wheel",onW);cv.removeEventListener("mousedown",onD);window.removeEventListener("mousemove",onM);window.removeEventListener("mouseup",onU);cv.removeEventListener("click",onClick);};
   },[drawFan,selectedId]);
 
-  // Inspector panel
-  
-
   return (<div style={{width:"100%",height:"100%",position:"relative"}}>
     <canvas ref={cvRef} style={{width:"100%",height:"100%",display:"block",cursor:"grab"}}/>
-    {hoverPerson&&(function(){
-      var cvEl=cvRef.current;
-      var W=cvEl?cvEl.parentElement.clientWidth:800;
-      var H=cvEl?cvEl.parentElement.clientHeight:600;
-      var tx=hoverPerson.x+20,ty=hoverPerson.y-10;
-      if(tx+184>W)tx=hoverPerson.x-202;
-      if(ty+170>H)ty=H-174;
-      if(ty<4)ty=4;
-      var hphotos=photoUrls[hoverPerson.id]||[];
-      return(<div style={{position:"absolute",left:tx,top:ty,width:190,background:"rgba(22,27,34,0.97)",borderRadius:10,border:"1px solid #30363d",boxShadow:"0 4px 20px rgba(0,0,0,0.5)",pointerEvents:"all",overflow:"hidden",zIndex:50,cursor:"default"}}
-        onMouseEnter={function(){overTooltipRef.current=true;}} onMouseLeave={function(){overTooltipRef.current=false;setHoverPerson(null);}}>
-        {hoverPerson.photo
-          ?<img src={hoverPerson.photo.url} style={{width:"100%",height:110,objectFit:"cover",display:"block",cursor:onPhotoClick?"pointer":"default"}}
-              onClick={function(){if(onPhotoClick&&hphotos.length)onPhotoClick(hphotos,hphotos.indexOf(hoverPerson.photo));}}
-              onError={function(e){e.target.style.display="none";}}/>
-          :<div style={{height:36,background:"rgba(74,158,255,0.06)",display:"flex",alignItems:"center",justifyContent:"center",color:"#8b949e",fontSize:16}}>📷</div>}
-        <div style={{padding:"7px 9px 6px"}}>
-          <div style={{fontSize:12,fontWeight:600,color:"#c9d1d9",marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{hoverPerson.name}</div>
-          {hoverPerson.place&&<div style={{fontSize:10,color:"#8b949e",marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{hoverPerson.place}</div>}
-          {hphotos.length>1&&<div style={{display:"flex",gap:3,overflowX:"auto",paddingBottom:4}}>
-            {hphotos.map(function(ph,pi){var ptc=({portrait:"#4a9eff",wedding:"#ff6b9d",place:"#66d9a0",document:"#ffa94d"})[ph.type]||"#8899aa";return(<img key={pi} src={ph.url} style={{width:34,height:34,borderRadius:4,objectFit:"cover",border:"2px solid "+ptc,flexShrink:0,cursor:"pointer"}}
-              onClick={function(){if(onPhotoClick)onPhotoClick(hphotos,pi);}}
-              onError={function(e){e.target.style.display="none";}}/>);})}
-          </div>}
-        </div>
-      </div>);
-    })()}
     </div>);
 }
 
@@ -1155,6 +1125,34 @@ function MapView(props) {
 
   return (<div style={{width:"100%",height:"100%",position:"relative"}}>
     <canvas ref={cvRef} style={{width:"100%",height:"100%",display:"block",cursor:"grab"}}/>
+    {hoverPerson&&(function(){
+      var cvEl=cvRef.current;
+      var W=cvEl?cvEl.parentElement.clientWidth:800;
+      var H=cvEl?cvEl.parentElement.clientHeight:600;
+      var tx=hoverPerson.x+20,ty=hoverPerson.y-10;
+      if(tx+190>W)tx=hoverPerson.x-210;
+      if(ty+180>H)ty=H-184;
+      if(ty<4)ty=4;
+      var hphotos=photoUrls[hoverPerson.id]||[];
+      return(<div style={{position:"absolute",left:tx,top:ty,width:190,background:"rgba(22,27,34,0.97)",borderRadius:10,border:"1px solid #30363d",boxShadow:"0 4px 20px rgba(0,0,0,0.5)",pointerEvents:"all",overflow:"hidden",zIndex:50,cursor:"default"}}
+        onMouseEnter={function(){overTooltipRef.current=true;}}
+        onMouseLeave={function(){overTooltipRef.current=false;setHoverPerson(null);}}>
+        {hoverPerson.photo
+          ?<img src={hoverPerson.photo.url} style={{width:"100%",height:110,objectFit:"cover",display:"block",cursor:"pointer"}}
+              onClick={function(){if(onPhotoClick&&hphotos.length)onPhotoClick(hphotos,Math.max(0,hphotos.indexOf(hoverPerson.photo)));}}
+              onError={function(e){e.target.style.display="none";}}/>
+          :<div style={{height:40,display:"flex",alignItems:"center",justifyContent:"center",color:"#8b949e",fontSize:18}}>📷</div>}
+        <div style={{padding:"7px 9px 6px"}}>
+          <div style={{fontSize:12,fontWeight:600,color:"#c9d1d9",marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{hoverPerson.name}</div>
+          {hoverPerson.place&&<div style={{fontSize:10,color:"#8b949e",marginBottom:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{hoverPerson.place}</div>}
+          {hphotos.length>1&&(<div style={{display:"flex",gap:3,overflowX:"auto",paddingBottom:2}}>
+            {hphotos.map(function(ph,pi){var ptc=({portrait:"#4a9eff",wedding:"#ff6b9d",place:"#66d9a0",document:"#ffa94d"})[ph.type]||"#8899aa";return(<img key={pi} src={ph.url} style={{width:32,height:32,borderRadius:3,objectFit:"cover",border:"2px solid "+ptc,flexShrink:0,cursor:"pointer"}}
+              onClick={function(){if(onPhotoClick)onPhotoClick(hphotos,pi);}}
+              onError={function(e){e.target.style.display="none";}}/>);})}
+          </div>)}
+        </div>
+      </div>);
+    })()}
     <div style={{position:"absolute",top:8,right:8,display:"flex",gap:2,background:"rgba(255,255,255,0.9)",borderRadius:6,padding:2,boxShadow:"0 1px 4px rgba(0,0,0,0.2)"}}>
       {Object.keys(TILE_SOURCES).map(function(k){var sdef=TILE_SOURCES[k];return(<button key={k} onClick={function(){tileErrRef.current={ok:0,err:0};Object.keys(tileCache.current).forEach(function(tk){if(tk.indexOf('/wms/')>=0)delete tileCache.current[tk];});setMapLayer(k);}} style={{padding:"3px 8px",fontSize:9,fontWeight:mapLayer===k?700:400,border:"none",borderRadius:4,cursor:"pointer",background:mapLayer===k?"#4a9eff":"transparent",color:mapLayer===k?(sdef.needsKey&&!lmKey?"#ffa94d":"#fff"):(sdef.needsKey&&!lmKey?"#ffa94d55":"#555")}}>{sdef.name}{sdef.needsKey&&!lmKey?" 🔑":""}</button>);})}
 
