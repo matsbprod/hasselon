@@ -2416,13 +2416,11 @@ function GenealogyApp(){
           </div>
         </div>
       </div>)}
-    </div>
-
     {panelLightbox&&(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.88)",zIndex:9000,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}
       onClick={function(){setPanelLightbox(null);}}>
-      <button onClick={function(){setPanelLightbox(null);}} style={{position:"fixed",top:16,right:16,background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",fontSize:20,width:38,height:38,borderRadius:8,cursor:"pointer",zIndex:9001}}>✕</button>
-      {panelLightbox.idx>0&&<button onClick={function(e){e.stopPropagation();setPanelLightbox(function(lb){return{photos:lb.photos,idx:lb.idx-1};});}} style={{position:"fixed",left:16,top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",fontSize:32,width:48,height:48,borderRadius:8,cursor:"pointer",zIndex:9001}}>‹</button>}
-      {panelLightbox.idx<panelLightbox.photos.length-1&&<button onClick={function(e){e.stopPropagation();setPanelLightbox(function(lb){return{photos:lb.photos,idx:lb.idx+1};});}} style={{position:"fixed",right:16,top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",fontSize:32,width:48,height:48,borderRadius:8,cursor:"pointer",zIndex:9001}}>›</button>}
+      <button onClick={function(){setPanelLightbox(null);}} style={{position:"fixed",top:16,right:16,background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",fontSize:20,width:38,height:38,borderRadius:8,cursor:"pointer",zIndex:9001}}>&#x2715;</button>
+      {panelLightbox.idx>0&&<button onClick={function(e){e.stopPropagation();setPanelLightbox(function(lb){return{photos:lb.photos,idx:lb.idx-1};});}} style={{position:"fixed",left:16,top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",fontSize:32,width:48,height:48,borderRadius:8,cursor:"pointer",zIndex:9001}}>&#8249;</button>}
+      {panelLightbox.idx<panelLightbox.photos.length-1&&<button onClick={function(e){e.stopPropagation();setPanelLightbox(function(lb){return{photos:lb.photos,idx:lb.idx+1};});}} style={{position:"fixed",right:16,top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",fontSize:32,width:48,height:48,borderRadius:8,cursor:"pointer",zIndex:9001}}>&#8250;</button>}
       <img src={panelLightbox.photos[panelLightbox.idx].url} style={{maxWidth:"88vw",maxHeight:"78vh",objectFit:"contain",borderRadius:10,border:"1px solid #444"}} onClick={function(e){e.stopPropagation();}}/>
       <div style={{marginTop:12,textAlign:"center"}} onClick={function(e){e.stopPropagation();}}>
         <div style={{color:"#fff",fontSize:14,fontWeight:600}}>{panelLightbox.photos[panelLightbox.idx].label||"Foto "+(panelLightbox.idx+1)}</div>
@@ -2431,6 +2429,7 @@ function GenealogyApp(){
         <div style={{color:"#666",fontSize:11,marginTop:3}}>{panelLightbox.idx+1} / {panelLightbox.photos.length}</div>
       </div>
     </div>)}
+    </div>
   );
 }
 
