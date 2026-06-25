@@ -1799,6 +1799,19 @@ function GenealogyApp(){
   var s16=_s(0),viewTrigger=s16[0],setViewTrigger=s16[1];
   var s17=_s("3d"),rightView=s17[0],setRightView=s17[1];
   useEffect(function(){
+    if(rightView==="kb"){
+      setTimeout(function(){
+        var iframe=document.getElementById('kb-iframe');
+        var fallback=document.getElementById('kb-fallback');
+        if(!iframe||!fallback) return;
+        try{var doc=iframe.contentDocument||(iframe.contentWindow&&iframe.contentWindow.document);
+          if(!doc||!doc.body)fallback.style.display='flex';}
+        catch(e){fallback.style.display='flex';}
+      },3500);
+    }
+  },[rightView]);
+
+  useEffect(function(){
     if(rightView==="3d"){
       setTimeout(function(){window.dispatchEvent(new Event("resize"));},60);
       // Re-trigger texture loading now that THREE scene is active
@@ -2164,41 +2177,59 @@ function GenealogyApp(){
           </div>}
           {rightView==="pedigree"&&<PedigreeView individuals={parsedData.individuals} families={parsedData.families} selectedId={sel?sel.id:null} mode={pedigreeMode} onInspect={function(id){var p=parsedData.individuals[id];if(p){p.id=id;setInspPerson(p);}}} onSelect={function(id){var nd=layout.nodes.find(function(n){return n.id===id;});setSel(nd||null);}} photoUrls={photoUrls}/>}
           {rightView==="fan"&&<FanView individuals={parsedData.individuals} families={parsedData.families} selectedId={sel?sel.id:null} mode={pedigreeMode} onInspect={function(id){var p=parsedData.individuals[id];if(p){p.id=id;setInspPerson(p);}}} onSelect={function(id){var nd=layout.nodes.find(function(n){return n.id===id;});setSel(nd||null);}} photoUrls={photoUrls}/>}
-          {rightView==="kb"&&(<div style={{width:"100%",height:"100%",position:"relative",background:C.bg}}>
-            <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100%",gap:16,color:C.dim}}>
-              <div style={{fontSize:40}}>☉</div>
-              <div style={{fontSize:14,fontWeight:600,color:C.text}}>Kartbild.com historiska kartor</div>
-              <div style={{fontSize:12,textAlign:"center",maxWidth:300,lineHeight:1.6}}>Välj en person i 3D-vyn för att öppna historisk karta för deras födelseort</div>
-              {panelPerson&&panelPerson.birthPlace&&lookupLocation(panelPerson.birthPlace)&&(<div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"center",marginTop:8}}>
-                {[["📜 Ekonomisk","0x10000"],["✈ Flygfoto 1960","0x100"],["✈ Flygfoto 1975","0x200"],["🗺 Topo","0x1000"]].map(function(kb){
-                  var loc=lookupLocation(panelPerson.birthPlace);
-                  return <a key={kb[0]} href={kartbildUrl(loc.lat,loc.lon,kb[1],placeZoom(panelPerson.birthPlace))} target="_blank" style={{padding:"10px 16px",background:"rgba(74,158,255,0.15)",border:"1px solid rgba(74,158,255,0.4)",borderRadius:8,color:C.accent,textDecoration:"none",fontSize:12,cursor:"pointer"}}>{kb[0]}</a>;
+          {rightView==="kb"&&(function(){
+            var kbPerson=inspPerson||sel;
+            var kbLoc=kbPerson&&kbPerson.birthPlace?lookupLocation(kbPerson.birthPlace):null;
+            var kbZ=kbPerson&&kbPerson.birthPlace?placeZoom(kbPerson.birthPlace):15;
+            var kbUrl=kbLoc
+              ?"https://kartbild.com/#"+kbZ+"/"+kbLoc.lat.toFixed(4)+"/"+kbLoc.lon.toFixed(4)+"/0x10000"
+              :"https://kartbild.com";
+            return(<div style={{width:"100%",height:"100%",position:"relative",background:C.bg,display:"flex",flexDirection:"column"}}>
+              {/* Toolbar */}
+              <div style={{flexShrink:0,padding:"6px 10px",borderBottom:"1px solid "+C.border,display:"flex",gap:6,alignItems:"center",background:C.panel}}>
+                <span style={{fontSize:11,color:C.dim,marginRight:4}}>Lager:</span>
+                {[["Ekonomisk","0x10000","#ffd060"],["Flygfoto 1960","0x100","#64b4ff"],["Flygfoto 1975","0x200","#64b4ff"],["Topo","0x1000","#80d080"],["Nuläge","0x2","#c9d1d9"]].map(function(lb){
+                  var url2=kbLoc?"https://kartbild.com/#"+kbZ+"/"+kbLoc.lat.toFixed(4)+"/"+kbLoc.lon.toFixed(4)+"/"+lb[1]:null;
+                  return url2?<button key={lb[0]} onClick={function(){document.getElementById('kb-iframe').src=url2;}}
+                    style={{padding:"3px 10px",background:"rgba(255,255,255,0.05)",border:"1px solid "+C.border,borderRadius:5,color:lb[2],fontSize:10,cursor:"pointer"}}>{lb[0]}</button>:null;
                 })}
-              </div>)}
-              {panelPerson&&(!panelPerson.birthPlace||!lookupLocation(panelPerson.birthPlace))&&<div style={{fontSize:11,color:C.dim,marginTop:8}}>{panelPerson.name} — födelseort ej i geocoding-registret</div>}
-              {!panelPerson&&<div style={{fontSize:11,color:C.dim,marginTop:8}}>Välj en person i 3D-vyn</div>}
-            </div>
-            {panelPerson&&(<div style={{position:"absolute",bottom:8,left:8,width:640,background:C.panel+"f5",borderRadius:14,border:"1px solid "+C.border,zIndex:10,backdropFilter:"blur(14px)",overflow:"hidden"}}>
-              <div style={{padding:"12px 14px 10px",background:"linear-gradient(135deg,"+(panelPerson.sex==="M"?C.male:panelPerson.sex==="F"?C.female:C.unknown)+"15,transparent)",borderBottom:"1px solid "+C.border}}>
-                <div style={{display:"flex",alignItems:"center",gap:10}}>
-                  {photoUrls[panelPerson.id]&&photoUrls[panelPerson.id].length>0?<img src={photoUrls[panelPerson.id][0].url} style={{width:56,height:56,borderRadius:10,objectFit:"cover",border:"2px solid "+(panelPerson.sex==="M"?"#4a9eff":"#ff6b9d"),flexShrink:0}}/>:null}
-                  <div style={{flex:1}}><div style={{fontSize:9,letterSpacing:2,color:C.dim,textTransform:"uppercase"}}>{GL[panelPerson.generation]||""}</div><div style={{fontSize:17,fontWeight:600}}>{panelPerson.name}</div></div>
+                {kbLoc&&<a href={kbUrl} target="_blank" style={{marginLeft:"auto",fontSize:9,color:C.dim,textDecoration:"none",padding:"3px 8px",border:"1px solid "+C.border,borderRadius:4}}>↗ Öppna i ny flik</a>}
+                {!kbLoc&&<span style={{fontSize:11,color:C.dim,marginLeft:8}}>Välj en person med känd födelseort</span>}
+              </div>
+              {/* iframe */}
+              <div style={{flex:1,position:"relative"}}>
+                <iframe id="kb-iframe" src={kbUrl}
+                  style={{width:"100%",height:"100%",border:"none",display:"block"}}
+                  title="Kartbild historiska kartor"
+                  onError={function(){}}
+                />
+                {/* Fallback message if iframe blocked */}
+                <div id="kb-fallback" style={{display:"none",position:"absolute",inset:0,background:C.bg,alignItems:"center",justifyContent:"center",flexDirection:"column",gap:12,color:C.dim,fontSize:12}}>
+                  <div style={{fontSize:32}}>☉</div>
+                  <div>kartbild.com blockerar inbäddning</div>
+                  {kbLoc&&<a href={kbUrl} target="_blank" style={{padding:"10px 20px",background:"rgba(74,158,255,0.15)",border:"1px solid #4a9eff",borderRadius:8,color:"#4a9eff",textDecoration:"none",fontSize:13}}>Öppna kartbild.com i ny flik →</a>}
                 </div>
               </div>
-              <div style={{padding:"8px 14px 10px",fontSize:12,display:"grid",gap:4}}>
-                {panelPerson.birthDate&&<div><span style={{color:C.dim}}>Född </span>{panelPerson.birthDate}{panelPerson.birthPlace?" · "+panelPerson.birthPlace:""}</div>}
-                {panelPerson.deathDate&&<div><span style={{color:C.dim}}>Död </span>{panelPerson.deathDate}{panelPerson.deathPlace?" · "+panelPerson.deathPlace:""}</div>}
-              </div>
-              {photoUrls[panelPerson.id]&&photoUrls[panelPerson.id].length>0&&(
-                <div style={{padding:"4px 14px 12px"}}>
-                  <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:4}}>
-                    {(function(){var phs=photoUrls[panelPerson.id];return phs.map(function(ph,pidx){var pt2=({portrait:"#4a9eff",wedding:"#ff6b9d",place:"#66d9a0",document:"#ffa94d",group:"#9775fa"})[ph.type]||"#8899aa";return(<div key={pidx} style={{flexShrink:0,cursor:"pointer"}} onClick={function(){setPanelLightbox({photos:phs,idx:pidx});}}><img src={ph.url} style={{width:54,height:54,borderRadius:6,objectFit:"cover",border:"2px solid "+pt2,display:"block"}} onError={function(e){e.target.style.opacity=0.3;}}/><div style={{fontSize:8,color:C.dim,marginTop:2,maxWidth:54,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{ph.label||ph.type}</div></div>);});})()}
+              {/* Info panel */}
+              {kbPerson&&(<div style={{position:"absolute",bottom:8,left:8,width:500,background:C.panel+"f5",borderRadius:14,border:"1px solid "+C.border,zIndex:10,backdropFilter:"blur(14px)",overflow:"hidden",pointerEvents:"all"}}>
+                <div style={{padding:"10px 12px 8px",background:"linear-gradient(135deg,"+(kbPerson.sex==="M"?C.male:kbPerson.sex==="F"?C.female:C.unknown)+"15,transparent)",borderBottom:"1px solid "+C.border}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    {photoUrls[kbPerson.id]&&photoUrls[kbPerson.id].length>0&&<img src={photoUrls[kbPerson.id][0].url} style={{width:44,height:44,borderRadius:8,objectFit:"cover",border:"2px solid "+(kbPerson.sex==="M"?"#4a9eff":"#ff6b9d"),flexShrink:0}}/>}
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:15,fontWeight:600}}>{kbPerson.name}</div>
+                      <div style={{fontSize:10,color:C.dim}}>{kbPerson.birthDate?kbPerson.birthDate+" · ":""}{kbPerson.birthPlace||""}</div>
+                    </div>
                   </div>
                 </div>
-              )}
-            </div>)}
-          </div>)}
-          {rightView==="places"&&<PlacesEditor
+                {photoUrls[kbPerson.id]&&photoUrls[kbPerson.id].length>0&&(
+                  <div style={{padding:"6px 12px 8px",display:"flex",gap:5,overflowX:"auto"}}>
+                    {(function(){var phs=photoUrls[kbPerson.id];return phs.map(function(ph,pidx){var pt2=({portrait:"#4a9eff",wedding:"#ff6b9d",place:"#66d9a0",document:"#ffa94d",group:"#9775fa"})[ph.type]||"#8899aa";return(<div key={pidx} style={{flexShrink:0,cursor:"pointer"}} onClick={function(){setPanelLightbox({photos:phs,idx:pidx});}}><img src={ph.url} style={{width:46,height:46,borderRadius:5,objectFit:"cover",border:"2px solid "+pt2}} onError={function(e){e.target.style.opacity=0.3;}}/></div>);});})()}
+                  </div>
+                )}
+              </div>)}
+            </div>);
+          })()}
+                    {rightView==="places"&&<PlacesEditor
             individuals={parsedData?parsedData.individuals:{}}
             families={parsedData?parsedData.families:{}}
             extraLocs={extraLocs}
