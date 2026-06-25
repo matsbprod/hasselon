@@ -2292,19 +2292,6 @@ function GenealogyApp(){
             </div>
           )}
         </div>)}
-        {panelLightbox&&(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.88)",zIndex:2000,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}
-          onClick={function(){setPanelLightbox(null);}}>
-          <button onClick={function(){setPanelLightbox(null);}} style={{position:"absolute",top:12,right:12,background:"rgba(255,255,255,0.1)",border:"none",color:"#fff",fontSize:18,width:34,height:34,borderRadius:7,cursor:"pointer"}}>✕</button>
-          {panelLightbox.idx>0&&<button onClick={function(e){e.stopPropagation();setPanelLightbox(function(lb){return{photos:lb.photos,idx:lb.idx-1};});}} style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.1)",border:"none",color:"#fff",fontSize:28,width:44,height:44,borderRadius:8,cursor:"pointer"}}>‹</button>}
-          {panelLightbox.idx<panelLightbox.photos.length-1&&<button onClick={function(e){e.stopPropagation();setPanelLightbox(function(lb){return{photos:lb.photos,idx:lb.idx+1};});}} style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.1)",border:"none",color:"#fff",fontSize:28,width:44,height:44,borderRadius:8,cursor:"pointer"}}>›</button>}
-          <img src={panelLightbox.photos[panelLightbox.idx].url} style={{maxWidth:"85vw",maxHeight:"75vh",objectFit:"contain",borderRadius:10,border:"1px solid #333"}} onClick={function(e){e.stopPropagation();}}/>
-          <div style={{marginTop:10,textAlign:"center"}} onClick={function(e){e.stopPropagation();}}>
-            <div style={{color:"#fff",fontSize:14,fontWeight:600}}>{panelLightbox.photos[panelLightbox.idx].label||"Foto "+(panelLightbox.idx+1)}</div>
-            {panelLightbox.photos[panelLightbox.idx].year&&<div style={{color:"#8899aa",fontSize:12,marginTop:2}}>{panelLightbox.photos[panelLightbox.idx].year}</div>}
-            {panelLightbox.photos[panelLightbox.idx].source&&<div style={{color:"#8899aa",fontSize:11,marginTop:1}}>Källa: {panelLightbox.photos[panelLightbox.idx].source}</div>}
-            <div style={{color:"#555",fontSize:11,marginTop:3}}>{panelLightbox.idx+1} / {panelLightbox.photos.length}</div>
-          </div>
-        </div>)}
       </div>)}
       
       {!showUp&&parsedData&&rightView!=="3d"&&(<div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0}}>
@@ -2420,6 +2407,20 @@ function GenealogyApp(){
         </div>
       </div>)}
     </div>
+
+    {panelLightbox&&(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.88)",zIndex:9000,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}
+      onClick={function(){setPanelLightbox(null);}}>
+      <button onClick={function(){setPanelLightbox(null);}} style={{position:"fixed",top:16,right:16,background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",fontSize:20,width:38,height:38,borderRadius:8,cursor:"pointer",zIndex:9001}}>✕</button>
+      {panelLightbox.idx>0&&<button onClick={function(e){e.stopPropagation();setPanelLightbox(function(lb){return{photos:lb.photos,idx:lb.idx-1};});}} style={{position:"fixed",left:16,top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",fontSize:32,width:48,height:48,borderRadius:8,cursor:"pointer",zIndex:9001}}>‹</button>}
+      {panelLightbox.idx<panelLightbox.photos.length-1&&<button onClick={function(e){e.stopPropagation();setPanelLightbox(function(lb){return{photos:lb.photos,idx:lb.idx+1};});}} style={{position:"fixed",right:16,top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",fontSize:32,width:48,height:48,borderRadius:8,cursor:"pointer",zIndex:9001}}>›</button>}
+      <img src={panelLightbox.photos[panelLightbox.idx].url} style={{maxWidth:"88vw",maxHeight:"78vh",objectFit:"contain",borderRadius:10,border:"1px solid #444"}} onClick={function(e){e.stopPropagation();}}/>
+      <div style={{marginTop:12,textAlign:"center"}} onClick={function(e){e.stopPropagation();}}>
+        <div style={{color:"#fff",fontSize:14,fontWeight:600}}>{panelLightbox.photos[panelLightbox.idx].label||"Foto "+(panelLightbox.idx+1)}</div>
+        {panelLightbox.photos[panelLightbox.idx].year&&<div style={{color:"#8899aa",fontSize:12,marginTop:2}}>{panelLightbox.photos[panelLightbox.idx].year}</div>}
+        {panelLightbox.photos[panelLightbox.idx].source&&<div style={{color:"#8899aa",fontSize:11,marginTop:1}}>Källa: {panelLightbox.photos[panelLightbox.idx].source}</div>}
+        <div style={{color:"#666",fontSize:11,marginTop:3}}>{panelLightbox.idx+1} / {panelLightbox.photos.length}</div>
+      </div>
+    </div>)}
   );
 }
 
