@@ -1269,10 +1269,14 @@ function PhotoManager(props){
 
   useEffect(function(){if(selectedId)setEditId(selectedId);},[selectedId]);
 
-  // Auto-sync when config becomes ready
+  // Auto-sync once on mount if config is ready
+  var didAutoSync=useRef(false);
   useEffect(function(){
-    if(ghReady) syncFromGitHub(ghConfig);
-  },[ghConfig.token,ghConfig.repo]);
+    if(ghReady&&!didAutoSync.current){
+      didAutoSync.current=true;
+      syncFromGitHub(ghConfig);
+    }
+  },[]);
 
   function parsePhotoMeta(filename){
     var base=filename.replace(/\.[^.]+$/,"");
