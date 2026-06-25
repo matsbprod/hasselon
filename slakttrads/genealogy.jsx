@@ -1275,22 +1275,32 @@ function PhotoManager(props){
   },[ghConfig.token,ghConfig.repo]);
 
   function parsePhotoMeta(filename){
-    // Pattern: {gedcomId}_{category}_{seq}_{description}.ext
-    // e.g. I0042_foto_barn_1_ingrid_ca1910.svg
     var base=filename.replace(/\.[^.]+$/,"");
     var parts=base.split("_");
     if(parts.length<3) return {gedcomId:null,type:"other",label:base};
     var gedcomId="@"+parts[0]+"@";
-    var cat=parts[1]+(parts[2]&&isNaN(parts[2])?"_"+parts[2]:"");
-    var seq=parts.find(function(p){return !isNaN(p)&&p.length<4;})||"1";
-    var descParts=parts.slice(parts.indexOf(seq)+1);
-    var label=descParts.join(" ").replace(/ca /g,"ca ").trim()||base;
-    // Map category to type
-    var typeMap={foto_barn:"portrait",foto_vuxen:"portrait",foto_aldre:"portrait",
-      foto_brollop:"wedding",plats:"place",kyrkbok_fod:"document",
-      kyrkbok_husforh:"document",kyrkbok_vigsel:"document",kyrkbok_dod:"document"};
+    // Category: parts[1], optionally + parts[2] if non-numeric
+    var catStart=1;
+    var cat=parts[1];
+    var seqIdx=2;
+    if(parts.length>2&&isNaN(parts[2])){cat=parts[1]+"_"+parts[2];seqIdx=3;}
+    // Find sequence number by index, not value (avoid indexOf matching wrong part)
+    var seq="1";
+    var descStart=seqIdx;
+    if(seqIdx<parts.length&&!isNaN(parts[seqIdx])&&parts[seqIdx].length<4){
+      seq=parts[seqIdx];descStart=seqIdx+1;
+    }
+    var descParts=parts.slice(descStart);
+    var label=descParts.join(" ").trim()||cat.replace(/_/g," ");
+    var typeMap={
+      foto_barn:"portrait",foto_vuxen:"portrait",foto_aldre:"portrait",
+      foto_ung:"portrait",foto_grupp:"group",
+      foto_brollop:"wedding",foto_brollops:"wedding",
+      plats:"place",
+      kyrkbok_fod:"document",kyrkbok_husforh:"document",
+      kyrkbok_vigsel:"document",kyrkbok_dod:"document",kyrkbok:"document"
+    };
     var type=typeMap[cat]||"other";
-    // Extract year from description
     var yearMatch=base.match(/_(1[0-9]{3}|2[0-9]{3})/);
     var year=yearMatch?yearMatch[1]:"";
     return {gedcomId:gedcomId,type:type,label:label,year:year,seq:parseInt(seq)||1};
