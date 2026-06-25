@@ -1318,7 +1318,8 @@ function PhotoManager(props){
         var items=(data.tree||[]).filter(function(f){
           return f.type==="blob"&&f.path.indexOf("photos/")===0&&f.path.match(/\.(jpg|jpeg|png|webp|svg|gif)$/i);
         });
-        if(!items.length){setSyncing(false);setSyncMsg("Inga bilder hittades i photos/");return;}
+        var truncated=data.truncated?" (repo för stor, kan vara ofullständigt)":"";
+        if(!items.length){setSyncing(false);setSyncMsg("Inga bilder hittades i photos/"+truncated);return;}
         var newUrls={};
         items.forEach(function(item){
           var filename=item.path.split("/").pop();
@@ -1347,8 +1348,10 @@ function PhotoManager(props){
         });
         var total=items.length;
         var persons=Object.keys(newUrls).length;
-        var idList=Object.keys(newUrls).slice(0,4).join(", ");
-        setSyncing(false);setSyncMsg("\u2713 "+total+" bilder f\u00f6r "+persons+" pers. | ID: "+idList);
+        var idList=Object.keys(newUrls).slice(0,6).join(", ");
+        var fileList=items.map(function(f){return f.path.split("/").pop();}).join(", ");
+        console.log("Sync found files:",fileList);
+        setSyncing(false);setSyncMsg("\u2713 "+total+" bilder | "+persons+" pers: "+idList+truncated);
       })
       .catch(function(e){
         setSyncing(false);
