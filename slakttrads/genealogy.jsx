@@ -729,13 +729,12 @@ function MapView(props) {
   var sLM=useState(lmKeyInit()),lmKey=sLM[0],setLmKey=sLM[1];
   var sLMconf=useState(false),showLMConf=sLMconf[0],setShowLMConf=sLMconf[1];
 
-  // WMS BBOX helper — sends minLon,minLat,maxLon,maxLat to proxy
-  // Each tile is 256px, so viewport spans W/256 tiles wide and H/256 tiles tall
+  // WMS BBOX: unproject the four canvas corners to get exact geographic extent
   function wmsBbox(v,W,H){
-    var z=v.zoom;
-    var cxT=lon2tileX(v.cx,z),cyT=lat2tileY(v.cy,z);
-    var minLon=tileX2lon(cxT-W/256,z),maxLon=tileX2lon(cxT+W/256,z);
-    var maxLat=tileY2lat(cyT-H/256,z),minLat=tileY2lat(cyT+H/256,z);
+    var tl=unproject(0,0,W,H,v);     // top-left pixel
+    var br=unproject(W,H,W,H,v);     // bottom-right pixel
+    var minLon=tl.lon,maxLon=br.lon;
+    var minLat=br.lat,maxLat=tl.lat;
     minLat=Math.max(-85,minLat);maxLat=Math.min(85,maxLat);
     return minLon.toFixed(6)+","+minLat.toFixed(6)+","+maxLon.toFixed(6)+","+maxLat.toFixed(6);
   }
@@ -838,12 +837,8 @@ function MapView(props) {
           ctx.fillStyle="#7a9a7a";ctx.font="11px Arial";ctx.textAlign="center";ctx.textBaseline="middle";
           ctx.fillText("Laddar "+srcDef.name+"...",W/2,H/2);
         } else if(wmsCache&&wmsCache.loaded){
-          // Project the stored bbox corners to canvas pixels
-          var bboxParts=(wmsCache._bbox||bbox).split(",").map(Number);
-          var bMinLon=bboxParts[0],bMinLat=bboxParts[1],bMaxLon=bboxParts[2],bMaxLat=bboxParts[3];
-          var pTL=project(bMaxLat,bMinLon,W,H,v);
-          var pBR=project(bMinLat,bMaxLon,W,H,v);
-          ctx.drawImage(wmsCache,pTL.x,pTL.y,pBR.x-pTL.x,pBR.y-pTL.y);
+          // bbox was calculated from canvas corners so image covers exactly (0,0,W,H)
+          ctx.drawImage(wmsCache,0,0,W,H);
         } else if(!wmsCache){
           tileCache.current[wmsKey]="loading";
           ctx.fillStyle="#dce8dc";ctx.fillRect(0,0,W,H);
@@ -1028,7 +1023,7 @@ function MapView(props) {
       var rect=cv.getBoundingClientRect();
       var mx=e.clientX-rect.left,my=e.clientY-rect.top;
       var before=unproject(mx,my,W,H,v);
-      v.zoom=Math.max(6,Math.min(17,v.zoom+(e.deltaY<0?0.3:-0.3)));
+      v.zoom=Math.max(6,Math.min(17,v.zoom+(e.deltaY<0?0.3:-0.3)));clearWmsCache();
       var after=unproject(mx,my,W,H,v);
       v.cx-=(after.lon-before.lon);v.cy-=(after.lat-before.lat);
       drawMap();
