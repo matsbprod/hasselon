@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+  <rect width="400" height="400" fill="#fffbf0"/>
+  <rect x="10" y="10" width="380" height="380" rx="8" fill="none" stroke="#8b6820" stroke-width="1" stroke-dasharray="6,3"/>
+  <line x1="50" y1="80" x2="350" y2="80" stroke="#e8d090" stroke-width="0.8"/>
+  <line x1="50" y1="94" x2="350" y2="94" stroke="#e8d090" stroke-width="0.8"/>
+  <line x1="50" y1="108" x2="350" y2="108" stroke="#e8d090" stroke-width="0.8"/>
+  <line x1="50" y1="122" x2="350" y2="122" stroke="#e8d090" stroke-width="0.8"/>
+  <line x1="50" y1="136" x2="350" y2="136" stroke="#e8d090" stroke-width="0.8"/>
+  <line x1="50" y1="150" x2="350" y2="150" stroke="#e8d090" stroke-width="0.8"/>
+  <line x1="50" y1="164" x2="350" y2="164" stroke="#e8d090" stroke-width="0.8"/>
+  <line x1="50" y1="178" x2="350" y2="178" stroke="#e8d090" stroke-width="0.8"/>
+  <line x1="50" y1="192" x2="350" y2="192" stroke="#e8d090" stroke-width="0.8"/>
+  <line x1="50" y1="206" x2="350" y2="206" stroke="#e8d090" stroke-width="0.8"/>
+  <text x="200" y="72" text-anchor="middle" font-family="serif" font-size="12" fill="#8b6820" font-weight="bold" font-style="italic">Födelsebok / Dopbok — Dalsland</text>
+  <text x="200" y="175" text-anchor="middle" font-family="serif" font-size="14" fill="#8b6820" font-weight="bold" font-style="normal">Ingrid Margareta Abrahamsson</text>
+  <text x="200" y="200" text-anchor="middle" font-family="serif" font-size="12" fill="#aa8838" font-weight="normal" font-style="normal">Född: _____ 1905</text>
+  <text x="200" y="220" text-anchor="middle" font-family="serif" font-size="12" fill="#aa8838" font-weight="normal" font-style="normal">Ort: Steneby</text>
+  <text x="200" y="285" text-anchor="middle" font-family="serif" font-size="11" fill="#8b6820" font-weight="normal" font-style="italic">KYRKBOK FÖDELSEBOK · PLACEHOLDER</text>
+  <text x="200" y="375" text-anchor="middle" font-family="serif" font-size="11" fill="#8b6820" opacity="0.7">I0042_kyrkbok_fod_1_1905.svg</text>
+</svg>
