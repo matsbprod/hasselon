@@ -1309,6 +1309,9 @@ function PhotoManager(props){
   function syncFromGitHub(cfg){
     if(!cfg||!cfg.token||!cfg.repo) return;
     setSyncing(true);setSyncMsg(null);
+    // Clear stale localStorage so old entries don't interfere
+    try{localStorage.removeItem('slakttrads_photos');}catch(e){}
+    setPhotoUrls({});
     var headers={"Authorization":"token "+cfg.token,"Accept":"application/vnd.github.v3+json"};
     var branch=cfg.branch||"main";
     // Use git trees API to list all files under photos/ recursively
@@ -1370,7 +1373,6 @@ function PhotoManager(props){
   function saveGhConfig(cfg){
     setGhConfig(cfg);
     try{localStorage.setItem('slakttrads_gh',JSON.stringify(cfg));}catch(e){}
-    if(cfg.token&&cfg.repo) syncFromGitHub(cfg);
   }
 
   function savePhotos(next){
