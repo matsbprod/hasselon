@@ -1058,7 +1058,7 @@ function MapView(props) {
       v.cy=tileY2lat(cyT-dy/scale,z);
       drawMap();
     }
-    function onUp(){v.dragging=false;clearWmsCache();}
+    function onUp(){v.dragging=false;drawMap();}
     function onClick(e){
       if(Math.abs(e.clientX-(v.sx||0))>4||Math.abs(e.clientY-(v.sy||0))>4)return;
       var r=cv.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;
@@ -1081,7 +1081,7 @@ function MapView(props) {
         v.zoom=Math.max(6,Math.min(17,v.zoom+Math.log2(d/lastD)));lastD=d;drawMap();
       }
     }
-    function tE(){v.dragging=false;}
+    function tE(){v.dragging=false;drawMap();}
     cv.addEventListener("wheel",onWheel,{passive:false});cv.addEventListener("mousedown",onDown);cv.addEventListener("mousemove",onMove);cv.addEventListener("mouseup",onUp);cv.addEventListener("click",onClick);cv.addEventListener("contextmenu",onCtx);
     cv.addEventListener("touchstart",tS,{passive:false});cv.addEventListener("touchmove",tM,{passive:false});cv.addEventListener("touchend",tE);
     return function(){cv.removeEventListener("wheel",onWheel);cv.removeEventListener("mousedown",onDown);cv.removeEventListener("mousemove",onMove);cv.removeEventListener("mouseup",onUp);cv.removeEventListener("click",onClick);cv.removeEventListener("contextmenu",onCtx);cv.removeEventListener("touchstart",tS);cv.removeEventListener("touchmove",tM);cv.removeEventListener("touchend",tE);};
