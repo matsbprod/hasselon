@@ -720,15 +720,22 @@ function FanView(props){
       if(tx+184>W)tx=hoverPerson.x-202;
       if(ty+170>H)ty=H-174;
       if(ty<4)ty=4;
-      return(<div style={{position:"absolute",left:tx,top:ty,width:182,background:"rgba(22,27,34,0.97)",borderRadius:10,border:"1px solid #30363d",boxShadow:"0 4px 20px rgba(0,0,0,0.5)",pointerEvents:"none",overflow:"hidden",zIndex:50}}>
+      var hphotos=photoUrls[hoverPerson.id]||[];
+      return(<div style={{position:"absolute",left:tx,top:ty,width:190,background:"rgba(22,27,34,0.97)",borderRadius:10,border:"1px solid #30363d",boxShadow:"0 4px 20px rgba(0,0,0,0.5)",pointerEvents:"all",overflow:"hidden",zIndex:50,cursor:"default"}}
+        onMouseEnter={function(){overTooltipRef.current=true;}} onMouseLeave={function(){overTooltipRef.current=false;setHoverPerson(null);}}>
         {hoverPerson.photo
-          ?<img src={hoverPerson.photo.url} style={{width:"100%",height:110,objectFit:"cover",display:"block"}} onError={function(e){e.target.style.display="none";}}/>
+          ?<img src={hoverPerson.photo.url} style={{width:"100%",height:110,objectFit:"cover",display:"block",cursor:onPhotoClick?"pointer":"default"}}
+              onClick={function(){if(onPhotoClick&&hphotos.length)onPhotoClick(hphotos,hphotos.indexOf(hoverPerson.photo));}}
+              onError={function(e){e.target.style.display="none";}}/>
           :<div style={{height:36,background:"rgba(74,158,255,0.06)",display:"flex",alignItems:"center",justifyContent:"center",color:"#8b949e",fontSize:16}}>📷</div>}
-        <div style={{padding:"7px 9px 8px"}}>
+        <div style={{padding:"7px 9px 6px"}}>
           <div style={{fontSize:12,fontWeight:600,color:"#c9d1d9",marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{hoverPerson.name}</div>
-          {hoverPerson.place&&<div style={{fontSize:10,color:"#8b949e",marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{hoverPerson.place}</div>}
-          {hoverPerson.photo&&hoverPerson.photo.label&&<div style={{fontSize:9,color:"#66d9a0"}}>{hoverPerson.photo.label}{hoverPerson.photo.year?" · "+hoverPerson.photo.year:""}</div>}
-          {hoverPerson.photoCount>1&&<div style={{fontSize:9,color:"#4a9eff",marginTop:2}}>{hoverPerson.photoCount} foton totalt</div>}
+          {hoverPerson.place&&<div style={{fontSize:10,color:"#8b949e",marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{hoverPerson.place}</div>}
+          {hphotos.length>1&&<div style={{display:"flex",gap:3,overflowX:"auto",paddingBottom:4}}>
+            {hphotos.map(function(ph,pi){var ptc=({portrait:"#4a9eff",wedding:"#ff6b9d",place:"#66d9a0",document:"#ffa94d"})[ph.type]||"#8899aa";return(<img key={pi} src={ph.url} style={{width:34,height:34,borderRadius:4,objectFit:"cover",border:"2px solid "+ptc,flexShrink:0,cursor:"pointer"}}
+              onClick={function(){if(onPhotoClick)onPhotoClick(hphotos,pi);}}
+              onError={function(e){e.target.style.display="none";}}/>);})}
+          </div>}
         </div>
       </div>);
     })()}
@@ -741,10 +748,11 @@ function MapView(props) {
   var tileCache=useRef({});
   var layerRef=useRef("osm");
   var tileErrRef=useRef({ok:0,err:0});
-  var individuals=props.individuals,year=props.year,selId=props.selectedId,onSelect=props.onSelect,extraLocs=props.extraLocs||{},buildPersonLocations=props.buildPersonLocations,focusLat=props.focusLat,focusLon=props.focusLon,focusZoom=props.focusZoom,followPersonId=props.followPersonId,followYear=props.followYear,photoUrls=props.photoUrls||{};
+  var individuals=props.individuals,year=props.year,selId=props.selectedId,onSelect=props.onSelect,extraLocs=props.extraLocs||{},buildPersonLocations=props.buildPersonLocations,focusLat=props.focusLat,focusLon=props.focusLon,focusZoom=props.focusZoom,followPersonId=props.followPersonId,followYear=props.followYear,photoUrls=props.photoUrls||{},onPhotoClick=props.onPhotoClick;
   var s13=useState("osm"),mapLayer=s13[0],setMapLayer=s13[1];
   var s14=useState(null),hoverPerson=s14[0],setHoverPerson=s14[1]; // {id,name,x,y,photos}
-  var hoverRef=useRef(null); // debounce timer
+  var hoverRef=useRef(null);
+  var overTooltipRef=useRef(false);
 
   // Tile sources
   var lmKeyInit=function(){try{var r=localStorage.getItem('slakttrads_lmkey');return r||"";}catch(e){return "";}};
@@ -1080,7 +1088,7 @@ function MapView(props) {
         v.cx=tileX2lon(cxT-dx/scale,z);
         v.cy=tileY2lat(cyT-dy/scale,z);
         drawMap();
-        setHoverPerson(null);
+        if(!overTooltipRef.current) setHoverPerson(null);
         return;
       }
       // Hover detection
@@ -1100,7 +1108,7 @@ function MapView(props) {
           setHoverPerson({id:found.id,name:ind.name,x:found.x,y:found.y,photo:mainPhoto,photoCount:photos.length,place:ind.birthPlace||""});
         }
       } else {
-        setHoverPerson(null);
+        if(!overTooltipRef.current) setHoverPerson(null);
       }
     }
     function onUp(){v.dragging=false;drawMap();}
@@ -2217,7 +2225,7 @@ function GenealogyApp(){
   return (
     <div style={{width:"100%",height:"100vh",background:C.bg,fontFamily:"'Segoe UI',sans-serif",color:C.text,display:"flex",overflow:"hidden"}}>
       {!showUp&&parsedData&&(<div style={{width:64,flexShrink:0,background:C.panel,borderRight:"1px solid "+C.border,display:"flex",flexDirection:"column",alignItems:"stretch",zIndex:20}}>
-        {[["3d","3D","\u25A6"],["map","Karta","\u2316"],["pedigree","Antavla","\u229E"],["fan","Solfj\u00e4der","\u25D4"],["kb","Kartbild","\u2609"],["places","Platser","\u29BF"],["photos","Foton","📷"]].map(function(t){
+        {[["3d","3D","\u25A6"],["map","Karta","\u2316"],["pedigree","Antavla","\u229E"],["fan","Solfj\u00e4der","\u25D4"],["places","Platser","\u29BF"],["photos","Foton","📷"]].map(function(t){
           return <button key={t[0]} onClick={function(){
               setRightView(t[0]);
               if(t[0]==="map"){var pp=inspPerson||sel;if(pp&&pp.birthPlace){var loc=lookupLocation(pp.birthPlace);if(loc)setMapFocus({lat:loc.lat,lon:loc.lon,zoom:geoZoomFor(pp.birthPlace)});}}
@@ -2308,7 +2316,7 @@ function GenealogyApp(){
         </div>
         <div style={{flex:1,position:"relative",minHeight:0}}>
           {rightView==="map"&&<div style={{position:"relative",width:"100%",height:"100%",pointerEvents:"all"}}>
-            <MapView individuals={parsedData.individuals} year={sliderYear} rangeStart={effStart} rangeEnd={effEnd} selectedId={sel?sel.id:null} onSelect={mapSel} isSample={isSample} extraLocs={extraLocs} buildPersonLocations={buildPersonLocations} focusLat={mapFocus?mapFocus.lat:null} focusLon={mapFocus?mapFocus.lon:null} focusZoom={mapFocus?mapFocus.zoom:null} followPersonId={sel?sel.id:null} followYear={sliderYear} photoUrls={photoUrls}/>
+            <MapView individuals={parsedData.individuals} year={sliderYear} rangeStart={effStart} rangeEnd={effEnd} selectedId={sel?sel.id:null} onSelect={mapSel} isSample={isSample} extraLocs={extraLocs} buildPersonLocations={buildPersonLocations} focusLat={mapFocus?mapFocus.lat:null} focusLon={mapFocus?mapFocus.lon:null} focusZoom={mapFocus?mapFocus.zoom:null} followPersonId={sel?sel.id:null} followYear={sliderYear} photoUrls={photoUrls} onPhotoClick={function(photos,idx){setPanelLightbox({photos:photos,idx:idx});}}/>
             {panelPerson&&(<div style={{position:"absolute",bottom:8,left:8,width:500,background:C.panel+"f5",borderRadius:14,border:"1px solid "+C.border,zIndex:10,backdropFilter:"blur(14px)",overflow:"hidden",pointerEvents:"all"}} onClick={function(e){e.stopPropagation();}}>
               <div style={{padding:"10px 12px 8px",background:"linear-gradient(135deg,"+(panelPerson.sex==="M"?C.male:panelPerson.sex==="F"?C.female:C.unknown)+"15,transparent)",borderBottom:"1px solid "+C.border}}>
                 <div style={{display:"flex",alignItems:"center",gap:8}}>
