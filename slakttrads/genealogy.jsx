@@ -1126,7 +1126,8 @@ function PhotoManager(props){
         });
         var total=items.length;
         var persons=Object.keys(newUrls).length;
-        setSyncing(false);setSyncMsg("\u2713 "+total+" bilder f\u00f6r "+persons+" personer synkade");
+        var idList=Object.keys(newUrls).slice(0,4).join(", ");
+        setSyncing(false);setSyncMsg("\u2713 "+total+" bilder f\u00f6r "+persons+" pers. | ID: "+idList);
       })
       .catch(function(e){
         setSyncing(false);
