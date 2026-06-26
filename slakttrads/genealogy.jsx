@@ -1096,7 +1096,6 @@ function MapView(props) {
           // Look up place-specific photos first
           var currentPlace=found.place||ind.birthPlace||"";
           var placePhotosForLoc=lookupPlacePhotos(currentPlace,placeUrls);
-          console.log("Hover place:",currentPlace,"norm:",normalizePlaceName(currentPlace),"placeUrls keys:",Object.keys(placeUrls),"match:",placePhotosForLoc.length);
           var mainPhoto=null;
           if(placePhotosForLoc.length>0){
             mainPhoto=placePhotosForLoc[0];
