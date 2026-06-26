@@ -242,13 +242,21 @@ function normalizePlaceName(place){
 
 function lookupPlacePhotos(place, placeUrls){
   if(!place||!placeUrls) return [];
-  var norm=normalizePlaceName(place);
-  // Try exact match first, then prefix match
-  if(placeUrls[norm]) return placeUrls[norm];
-  // Try partial match — platsnamnet kan vara längre eller kortare
   var keys=Object.keys(placeUrls);
+  if(!keys.length) return [];
+  var norm=normalizePlaceName(place);
+  // 1. Exact match
+  if(placeUrls[norm]) return placeUrls[norm];
+  // 2. Substring match in either direction
   for(var i=0;i<keys.length;i++){
     if(norm.indexOf(keys[i])>=0||keys[i].indexOf(norm)>=0) return placeUrls[keys[i]];
+  }
+  // 3. Match any word segment (e.g. "lundby" matches "biskopsgatan_7_lundby_goteborg")
+  var words=norm.split("_").filter(function(w){return w.length>3;});
+  for(var j=0;j<words.length;j++){
+    for(var k=0;k<keys.length;k++){
+      if(keys[k].indexOf(words[j])>=0) return placeUrls[keys[k]];
+    }
   }
   return [];
 }
