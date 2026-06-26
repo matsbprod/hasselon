@@ -1354,11 +1354,13 @@ function PhotoManager(props){
           // or simpler: husegardet_torp_01.jpg
           // PlaceId = everything before the sequence number
           var parts=base.split("_");
-          // Find first numeric part as sequence
-          var seqIdx=parts.length-1;
+          // Sequence number must be exactly 2 digits (01-99) to avoid matching
+          // numbers in place names like "biskopsgatan_7"
+          var seqIdx=-1;
           for(var i=1;i<parts.length;i++){
-            if(!isNaN(parts[i])&&parts[i].length<=3){seqIdx=i;break;}
+            if(/^[0-9]{2}$/.test(parts[i])){seqIdx=i;break;}
           }
+          if(seqIdx<0) seqIdx=parts.length; // no seq found, whole name is place id
           // Remove PLACE_ prefix if present
           var idParts=parts.slice(0,seqIdx);
           if(idParts[0]&&idParts[0].toUpperCase()==="PLACE") idParts=idParts.slice(1);
