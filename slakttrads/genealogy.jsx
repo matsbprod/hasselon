@@ -243,8 +243,15 @@ function normalizePlaceName(place){
 function lookupPlacePhotos(place, placeUrls){
   if(!place||!placeUrls) return [];
   var norm=normalizePlaceName(place);
-  // Exact match only — filename must match normalized place name exactly
-  return placeUrls[norm]||[];
+  // 1. Exact match
+  if(placeUrls[norm]) return placeUrls[norm];
+  // 2. norm starts with placeId (place name is more specific than file)
+  // e.g. "biskopsgatan_7_lundby_goteborg" starts with "biskopsgatan_7_lundby"
+  var keys=Object.keys(placeUrls);
+  for(var i=0;i<keys.length;i++){
+    if(norm.indexOf(keys[i])===0) return placeUrls[keys[i]];
+  }
+  return [];
 }
 
 // Pre-sort keys longest first so "kristinehamn" matches before "kristine"
