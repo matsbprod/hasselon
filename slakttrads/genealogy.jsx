@@ -949,7 +949,7 @@ function MapView(props) {
         ctx.fillText(grp.length+"",bp.x,bp.y);
         ctx.fillStyle="rgba(0,0,0,0.6)";ctx.font="bold 8px Arial";ctx.textBaseline="top";
         ctx.fillText(grp[0].place.split(",")[0].split("(")[0].trim(),bp.x,bp.y+17);
-        for(var gi=0;gi<grp.length;gi++)areas.push({x:bp.x,y:bp.y,r:16,id:grp[gi].id});
+        for(var gi=0;gi<grp.length;gi++)areas.push({x:bp.x,y:bp.y,r:16,id:grp[gi].id,place:grp[gi].place||""});
         continue;
       }
 
@@ -984,7 +984,7 @@ function MapView(props) {
           ctx.fillText("age "+pp.age,px2,py2+r+15);
         }
 
-        areas.push({x:px2,y:py2,r:r+4,id:pp.id});
+        areas.push({x:px2,y:py2,r:r+4,id:pp.id,place:pp.place||""});
       }
       // Place label at medium zoom
       if(grp.length>0&&grp.length<=8&&v.zoom>=10&&v.zoom<13){
@@ -1093,8 +1093,8 @@ function MapView(props) {
         var ind=individuals&&individuals[found.id];
         if(ind){
           var photos=photoUrls[found.id]||[];
-          // Look up place-specific photos first
-          var currentPlace=found.place||ind.birthPlace||"";
+          // Place comes directly from the map marker position (already correct for current year)
+          var currentPlace=found.place||"";
           var placePhotosForLoc=lookupPlacePhotos(currentPlace,placeUrls);
           var mainPhoto=null;
           if(placePhotosForLoc.length>0){
