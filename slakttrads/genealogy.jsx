@@ -231,6 +231,28 @@ function lookupLocation(place){
   return null;
 }
 
+function normalizePlaceName(place){
+  if(!place) return "";
+  return place.toLowerCase()
+    .replace(/[åä]/g,"a").replace(/ö/g,"o")
+    .replace(/[^a-z0-9]+/g,"_")
+    .replace(/^_+|_+$/g,"")
+    .replace(/_+/g,"_");
+}
+
+function lookupPlacePhotos(place, placeUrls){
+  if(!place||!placeUrls) return [];
+  var norm=normalizePlaceName(place);
+  // Try exact match first, then prefix match
+  if(placeUrls[norm]) return placeUrls[norm];
+  // Try partial match — platsnamnet kan vara längre eller kortare
+  var keys=Object.keys(placeUrls);
+  for(var i=0;i<keys.length;i++){
+    if(norm.indexOf(keys[i])>=0||keys[i].indexOf(norm)>=0) return placeUrls[keys[i]];
+  }
+  return [];
+}
+
 // Pre-sort keys longest first so "kristinehamn" matches before "kristine"
 var GEOCODE_KEYS=Object.keys(GEOCODE).sort(function(a,b){return b.length-a.length;});
 
@@ -718,7 +740,7 @@ function MapView(props) {
   var tileCache=useRef({});
   var layerRef=useRef("osm");
   var tileErrRef=useRef({ok:0,err:0});
-  var individuals=props.individuals,year=props.year,selId=props.selectedId,onSelect=props.onSelect,extraLocs=props.extraLocs||{},buildPersonLocations=props.buildPersonLocations,focusLat=props.focusLat,focusLon=props.focusLon,focusZoom=props.focusZoom,followPersonId=props.followPersonId,followYear=props.followYear,photoUrls=props.photoUrls||{},onPhotoClick=props.onPhotoClick;
+  var individuals=props.individuals,year=props.year,selId=props.selectedId,onSelect=props.onSelect,extraLocs=props.extraLocs||{},buildPersonLocations=props.buildPersonLocations,focusLat=props.focusLat,focusLon=props.focusLon,focusZoom=props.focusZoom,followPersonId=props.followPersonId,followYear=props.followYear,photoUrls=props.photoUrls||{},placeUrls=props.placeUrls||{},onPhotoClick=props.onPhotoClick;
   var s13=useState("osm"),mapLayer=s13[0],setMapLayer=s13[1];
   var s14=useState(null),hoverPerson=s14[0],setHoverPerson=s14[1]; // {id,name,x,y,photos}
   var hoverRef=useRef(null);
@@ -1071,11 +1093,18 @@ function MapView(props) {
         var ind=individuals&&individuals[found.id];
         if(ind){
           var photos=photoUrls[found.id]||[];
-          // Find best photo: place photo first, then portrait
-          var placePhoto=photos.find(function(p){return p.type==="place";});
-          var portraitPhoto=photos.find(function(p){return p.type==="portrait";});
-          var mainPhoto=placePhoto||portraitPhoto||photos[0]||null;
-          setHoverPerson({id:found.id,name:ind.name,x:found.x,y:found.y,photo:mainPhoto,photoCount:photos.length,place:ind.birthPlace||""});
+          // Look up place-specific photos first
+          var currentPlace=found.place||ind.birthPlace||"";
+          var placePhotosForLoc=lookupPlacePhotos(currentPlace,placeUrls);
+          var mainPhoto=null;
+          if(placePhotosForLoc.length>0){
+            mainPhoto=placePhotosForLoc[0];
+          } else {
+            var placePhotoP=photos.find(function(p){return p.type==="place";});
+            var portraitPhoto=photos.find(function(p){return p.type==="portrait";});
+            mainPhoto=placePhotoP||portraitPhoto||photos[0]||null;
+          }
+          setHoverPerson({id:found.id,name:ind.name,x:found.x,y:found.y,photo:mainPhoto,photoCount:photos.length,place:currentPlace,placePhotos:placePhotosForLoc});
         }
       } else {
         if(!overTooltipRef.current) setHoverPerson(null);
@@ -1145,11 +1174,14 @@ function MapView(props) {
         <div style={{padding:"7px 9px 6px"}}>
           <div style={{fontSize:12,fontWeight:600,color:"#c9d1d9",marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{hoverPerson.name}</div>
           {hoverPerson.place&&<div style={{fontSize:10,color:"#8b949e",marginBottom:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{hoverPerson.place}</div>}
-          {hphotos.length>1&&(<div style={{display:"flex",gap:3,overflowX:"auto",paddingBottom:2}}>
-            {hphotos.map(function(ph,pi){var ptc=({portrait:"#4a9eff",wedding:"#ff6b9d",place:"#66d9a0",document:"#ffa94d"})[ph.type]||"#8899aa";return(<img key={pi} src={ph.url} style={{width:32,height:32,borderRadius:3,objectFit:"cover",border:"2px solid "+ptc,flexShrink:0,cursor:"pointer"}}
-              onClick={function(){if(onPhotoClick)onPhotoClick(hphotos,pi);}}
-              onError={function(e){e.target.style.display="none";}}/>);})}
-          </div>)}
+          {(function(){
+            var galleryPhotos=hoverPerson.placePhotos&&hoverPerson.placePhotos.length>0?hoverPerson.placePhotos:hphotos;
+            if(galleryPhotos.length>1) return(<div style={{display:"flex",gap:3,overflowX:"auto",paddingBottom:2}}>
+              {galleryPhotos.map(function(ph,pi){return(<img key={pi} src={ph.url} style={{width:32,height:32,borderRadius:3,objectFit:"cover",border:"2px solid #66d9a0",flexShrink:0,cursor:"pointer"}}
+                onClick={function(){if(onPhotoClick)onPhotoClick(galleryPhotos,pi);}}
+                onError={function(e){e.target.style.display="none";}}/>);})}
+            </div>);
+          })()}
         </div>
       </div>);
     })()}
@@ -1275,6 +1307,7 @@ function PhotoManager(props){
     if(ghReady&&!didAutoSync.current){
       didAutoSync.current=true;
       syncFromGitHub(ghConfig);
+      syncPlacePhotos(ghConfig);
     }
   },[]);
 
@@ -1304,6 +1337,57 @@ function PhotoManager(props){
     var yearMatch=base.match(/_(1[0-9]{3}|2[0-9]{3})/);
     var year=yearMatch?yearMatch[1]:"";
     return {gedcomId:gedcomId,type:type,label:label,year:year,seq:seq};
+  }
+
+  var syncInProgressRef=useRef(false);
+
+  function syncPlacePhotos(cfg){
+    if(!cfg||!cfg.token||!cfg.repo) return;
+    var headers={"Authorization":"token "+cfg.token,"Accept":"application/vnd.github.v3+json"};
+    var branch=cfg.branch||"main";
+    fetch("https://api.github.com/repos/"+cfg.repo+"/git/trees/"+branch+"?recursive=1",{headers:headers})
+      .then(function(r){return r.ok?r.json():Promise.reject(r.status);})
+      .then(function(data){
+        var items=(data.tree||[]).filter(function(f){
+          return f.type==="blob"&&f.path.indexOf("photos/places/")===0&&f.path.match(/\.(jpg|jpeg|png|webp|svg|gif)$/i);
+        });
+        if(!items.length) return;
+        var newPlaceUrls={};
+        items.forEach(function(item){
+          var filename=item.path.split("/").pop();
+          var base=filename.replace(/\.[^.]+$/,"");
+          // Format: PLACE_husegardet_torp_01_exteriör.jpg
+          // or simpler: husegardet_torp_01.jpg
+          // PlaceId = everything before the sequence number
+          var parts=base.split("_");
+          // Find first numeric part as sequence
+          var seqIdx=parts.length-1;
+          for(var i=1;i<parts.length;i++){
+            if(!isNaN(parts[i])&&parts[i].length<=3){seqIdx=i;break;}
+          }
+          // Remove PLACE_ prefix if present
+          var idParts=parts.slice(0,seqIdx);
+          if(idParts[0]&&idParts[0].toUpperCase()==="PLACE") idParts=idParts.slice(1);
+          var placeId=idParts.join("_").toLowerCase();
+          if(!placeId) return;
+          var seq=parseInt(parts[seqIdx])||1;
+          var descParts=parts.slice(seqIdx+1);
+          var label=descParts.join(" ").trim()||placeId.replace(/_/g," ");
+          var yearMatch=base.match(/_(1[0-9]{3}|2[0-9]{3})/);
+          var year=yearMatch?yearMatch[1]:"";
+          var rawUrl="https://raw.githubusercontent.com/"+cfg.repo+"/"+branch+"/"+item.path;
+          if(!newPlaceUrls[placeId])newPlaceUrls[placeId]=[];
+          newPlaceUrls[placeId].push({url:rawUrl,label:label,year:year,seq:seq,placeId:placeId});
+        });
+        // Sort each place's photos by seq
+        Object.keys(newPlaceUrls).forEach(function(k){
+          newPlaceUrls[k].sort(function(a,b){return a.seq-b.seq;});
+        });
+        try{localStorage.setItem('slakttrads_place_photos',JSON.stringify(newPlaceUrls));}catch(e){}
+        setPlaceUrls(newPlaceUrls);
+        console.log("Place photos synced:",Object.keys(newPlaceUrls).length,"places");
+      })
+      .catch(function(e){console.warn("Place photo sync failed:",e);});
   }
 
   var syncInProgressRef=useRef(false);
@@ -1570,7 +1654,7 @@ function PhotoManager(props){
           "Token beh\u00f6ver repo-scope. Bilder sparas i photos/. SVG, JPG, PNG st\u00f6ds."
         ),
         ghReady&&React.createElement('button',{
-          onClick:function(){syncFromGitHub(ghConfig);},
+          onClick:function(){syncFromGitHub(ghConfig);syncPlacePhotos(ghConfig);},
           disabled:syncing,
           style:{marginTop:6,padding:"5px 12px",background:syncing?"rgba(255,255,255,0.05)":"rgba(74,158,255,0.15)",border:"1px solid "+(syncing?C2.border:"#4a9eff"),borderRadius:6,color:syncing?C2.dim:"#4a9eff",cursor:syncing?"default":"pointer",fontSize:10,fontWeight:600,width:"100%"}},
           syncing?"\u23F3 H\u00e4mtar bilder fr\u00e5n GitHub...":"\uD83D\uDD04 Synka bilder fr\u00e5n GitHub"
@@ -1920,8 +2004,10 @@ function PlacesEditor({individuals,families,extraLocs,setExtraLocs,selectedId,bu
 
 
 function GenealogyApp(){
-  var _s=useState;var s1=_s(null),layout=s1[0],setLayout=s1[1];var s2=_s(null),sel=s2[0],setSel=s2[1];var sInsp=_s(null),inspPerson=sInsp[0],setInspPerson=sInsp[1];var sLB=_s(null),panelLightbox=sLB[0],setPanelLightbox=sLB[1];var s3=_s(""),search=s3[0],setSearch=s3[1];var s4=_s(new Set()),hlIds=s4[0],setHlIds=s4[1];var s5=_s(true),showUp=s5[0],setShowUp=s5[1];var s6=_s({}),photoTex=s6[0],setPhotoTex=s6[1];var s7=_s(false),isSample=s7[0],setIsSample=s7[1];var s8=_s(null),parsedData=s8[0],setParsedData=s8[1];var s9=_s(1970),sliderYear=s9[0],setSliderYear=s9[1];var s10=_s(false),isPlaying=s10[0],setIsPlaying=s10[1];var s11=_s(null),rangeStart=s11[0],setRangeStart=s11[1];var s12=_s(null),rangeEnd=s12[0],setRangeEnd=s12[1];
+  var _s=useState;var s1=_s(null),layout=s1[0],setLayout=s1[1];var s2=_s(null),sel=s2[0],setSel=s2[1];var sInsp=_s(null),inspPerson=sInsp[0],setInspPerson=sInsp[1];var sLB=_s(null),panelLightbox=sLB[0],setPanelLightbox=sLB[1];var s3=_s(""),search=s3[0],setSearch=s3[1];var s4=_s(new Set()),hlIds=s4[0],setHlIds=s4[1];var s5=_s(true),showUp=s5[0],setShowUp=s5[1];var s6=_s({}),photoTex=s6[0],setPhotoTex=s6[1];var s7=_s(true),isSample=s7[0],setIsSample=s7[1];var IDA2_GED="0 HEAD\n1 SOUR MinSl\u00e4kt\n2 VERS V4.9\n2 NAME MinSl\u00e4kt\n1 DEST MinSl\u00e4kt\n1 DATE 19 FEB 2026\n1 SUBM @SUBM1@\n1 FILE C:\\Users\\Admin\\Desktop\\Ida2.ged\n1 GEDC\n2 VERS 5.5\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n1 LANG Swedish\n0 @I70@ INDI\n1 NAME Ulla* Christina /Abrahamsson f Haster/\n1 SEX F\n1 BIRT\n2 DATE 16 MAR 1944\n2 PLAC Oskar Fredrik (O)\n1 FAMS @F1086@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I83@ INDI\n1 NAME Ester Maria /Abrahamsson f Jonsson/\n1 SEX F\n1 BIRT\n2 DATE 4 NOV 1911\n2 PLAC Myckleby (O)\n1 DEAT\n2 DATE 27 JUL 1989\n2 PLAC Masrhugget (O)\n1 FAMS @F673@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I103@ INDI\n1 NAME Ida Amalia /Abrahamsson f Olsdotter/\n1 SEX F\n1 BIRT\n2 DATE 20 APR 1873\n2 PLAC Torp (O)\n1 DEAT\n2 DATE 31 MAY 1941\n2 PLAC Torp (O)\n1 FAMS @F161@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I131@ INDI\n1 NAME Alexandra Yasmine S Ran /Abrahamsson/\n1 SEX F\n1 BIRT\n2 DATE 2 JUN 1986\n2 PLAC Sydkorea\n1 FAMC @F1086@\n1 CHAN\n2 DATE 27 NOV 2022\n0 @I157@ INDI\n1 NAME Bernt* \u00c5ke Eilert /Abrahamsson/\n1 SEX M\n1 BIRT\n2 DATE 5 AUG 1947\n2 PLAC Karl Johan (O)\n1 DEAT\n2 DATE AUG 1998\n2 PLAC H\u00f6gsbo  (O)\n1 FAMS @F1086@\n1 FAMC @F673@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I184@ INDI\n1 NAME Fredrik Bernt Ho-Sher /Abrahamsson/\n1 SEX M\n1 BIRT\n2 DATE 2 FEB 1983\n2 PLAC Taiwan\n1 FAMC @F1086@\n1 CHAN\n2 DATE 27 NOV 2022\n0 @I194@ INDI\n1 NAME Gustav \u00c5ke /Abrahamsson/\n1 SEX M\n1 BIRT\n2 DATE 6 MAY 1909\n2 PLAC Torp (O)\n1 DEAT\n2 DATE 8 JAN 1985\n2 PLAC Masthugget (O)\n1 FAMS @F673@\n1 FAMC @F161@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I254@ INDI\n1 NAME Olof Amandus /Abrahamsson/\n1 SEX M\n1 BIRT\n2 DATE 9 OCT 1876\n2 PLAC Stala (O)\n1 DEAT\n2 DATE 22 DEC 1959\n2 PLAC Torp (O)\n1 FAMS @F161@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I263@ INDI\n1 NAME Roger /Abrahamsson/\n1 SEX M\n1 BIRT\n2 DATE 26 JAN 1912\n2 PLAC Torp (O)\n1 DEAT\n2 DATE 8 APR 1983\n2 PLAC Nyl\u00f6se (O)\n1 FAMC @F161@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I2158@ INDI\n1 NAME Ingrid Margareta /Blomberg f Abrahamsson/\n1 SEX F\n1 BIRT\n2 DATE 5 APR 1907\n2 PLAC Torp (O)\n1 DEAT\n2 DATE 24 APR 2000\n2 PLAC Lundby (O)\n1 FAMS @F672@\n1 FAMC @F161@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I2159@ INDI\n1 NAME Gerd Britt-Marie* /Blomberg f Karlsson/\n1 SEX F\n1 BIRT\n2 DATE 2 MAR 1939\n2 PLAC Lundby (O)\n1 FAMS @F1084@\n1 CHAN\n2 DATE 4 AUG 2016\n0 @I2160@ INDI\n1 NAME Karl Gustaf /Blomberg/\n1 SEX M\n1 BIRT\n2 DATE 5 MAY 1906\n2 PLAC Masthugget (O)\n1 DEAT\n2 DATE 16 APR 1998\n2 PLAC Lundby (O)\n1 FAMS @F672@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I2161@ INDI\n1 NAME Mats* G\u00f6ran /Blomberg/\n1 SEX M\n1 BIRT\n2 DATE 23 OCT 1967\n2 PLAC Kristinehamn (S)\n1 FAMC @F1084@\n1 CHAN\n2 DATE 4 AUG 2016\n0 @I2162@ INDI\n1 NAME Stig* Gustaf G\u00f6ran /Blomberg/\n1 SEX M\n1 BIRT\n2 DATE 4 FEB 1942\n2 PLAC Lundby (O)\n1 FAMS @F1084@\n1 FAMC @F672@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I2163@ INDI\n1 NAME Stig Peter* /Blomberg/\n1 SEX M\n1 BIRT\n2 DATE 26 JAN 1970\n2 PLAC Kristinehamn (S)\n1 FAMC @F1084@\n1 CHAN\n2 DATE 29 APR 2017\n0 @I3192@ INDI\n1 NAME Inger* Birgitta /Eriksson f St\u00e5larm/\n1 SEX F\n1 BIRT\n2 DATE 9 JUN 1943\n2 PLAC Lundby (O)\n1 FAMS @F1090@\n1 FAMC @F675@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I3231@ INDI\n1 NAME Lars* Erik /Eriksson/\n1 SEX M\n1 BIRT\n2 DATE 28 FEB 1938\n2 PLAC Nyk\u00f6ping V\u00e4stra (D)\n1 DEAT\n2 DATE 10 JAN 2005\n2 PLAC Tuve (O)\n1 FAMS @F1090@\n1 CHAN\n2 DATE 2 JUL 2016\n0 @I3490@ INDI\n1 NAME Gunvor Ing-Marie /Gemoll f Gustavsson/\n1 SEX F\n1 BIRT\n2 DATE 21 DEC 1950\n2 PLAC Masthugg (O)\n1 FAMS @F1746@\n1 FAMC @F1080@\n1 CHAN\n2 DATE 28 AUG 2016\n0 @I3491@ INDI\n1 NAME Christian* Peter Mattias /Gemoll/\n1 SEX M\n1 BIRT\n2 DATE 12 AUG 1976\n2 PLAC Masthugg (O)\n1 FAMC @F1746@\n1 CHAN\n2 DATE 21 FEB 2017\n0 @I3492@ INDI\n1 NAME Henrik* Peter Michael /Gemoll/\n1 SEX M\n1 BIRT\n2 DATE 21 FEB 1974\n2 PLAC Masthugg (O)\n1 FAMC @F1746@\n1 CHAN\n2 DATE 21 FEB 2017\n0 @I3493@ INDI\n1 NAME Mini Michael* Lars Roger /Gemoll/\n1 SEX M\n1 BIRT\n2 DATE 15 APR 1979\n2 PLAC Askim (O)\n1 FAMC @F1746@\n1 CHAN\n2 DATE 14 MAR 2021\n0 @I3494@ INDI\n1 NAME Renee Peter-Frank /Gemoll/\n1 SEX M\n1 BIRT\n2 DATE 3 AUG 1947\n1 FAMS @F1746@\n1 CHAN\n2 DATE 28 AUG 2016\n0 @I3577@ INDI\n1 NAME Bengt Gunnar* /Grann/\n1 SEX M\n1 BIRT\n2 DATE 27 AUG 1962\n2 PLAC Botkyrka (AB)\n1 FAMS @F3719@\n1 CHAN\n2 DATE 14 SEP 2022\n0 @I3756@ INDI\n1 NAME Anna Gunborg /Gustavsson f Abrahamsson/\n1 SEX F\n1 BIRT\n2 DATE 3 MAR 1903\n2 PLAC Torp (O)\n1 DEAT\n2 DATE 19 AUG 1948\n2 PLAC Masthugget (O)\n1 FAMS @F670@\n1 FAMC @F161@\n1 CHAN\n2 DATE 28 AUG 2016\n0 @I3772@ INDI\n1 NAME Dagmar Viola /Gustavsson f Johansson/\n1 SEX F\n1 BIRT\n2 DATE 27 SEP 1927\n2 PLAC Masthugg (O)\n1 DEAT\n2 DATE 23 FEB 1995\n2 PLAC Torp (O)\n1 FAMS @F1080@\n1 CHAN\n2 DATE 28 AUG 2016\n0 @I3799@ INDI\n1 NAME Erik Julius /Gustavsson/\n1 SEX M\n1 BIRT\n2 DATE 6 MAR 1894\n2 PLAC L\u00e5ngelanda (O)\n1 DEAT\n2 DATE 6 AUG 1971\n2 PLAC Johanneberg (O)\n1 FAMS @F670@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I3839@ INDI\n1 NAME Roger* Vilgot /Gustavsson/\n1 SEX M\n1 BIRT\n2 DATE 20 NOV 1926\n2 PLAC Oskar Fredrik (O)\n1 DEAT\n2 DATE 2 JUL 2015\n2 PLAC R\u00f6ra (O) Hen\u00e5n\n1 FAMS @F1080@\n1 FAMC @F670@\n1 CHAN\n2 DATE 20 FEB 2019\n0 @I4314@ INDI\n1 NAME Richard P /Henry/\n1 SEX M\n1 BIRT\n2 DATE 1967\n2 PLAC USA\n1 FAMS @F1749@\n1 CHAN\n2 DATE 29 DEC 2016\n0 @I4409@ INDI\n1 NAME Junita /Hilmersson f Fransson/\n1 SEX F\n1 BIRT\n2 DATE 26 APR 1962\n2 PLAC Alings\u00e5s (P)\n1 FAMS @F3339@\n1 CHAN\n2 DATE 2 MAR 2021\n0 @I4414@ INDI\n1 NAME Ann-Britt /Hilmersson f St\u00e5larm/\n1 SEX F\n1 BIRT\n2 DATE 14 NOV 1935\n2 PLAC Oskar Fredrik (O)\n1 FAMS @F1089@\n1 FAMC @F675@\n1 CHAN\n2 DATE 2 JUL 2016\n0 @I4421@ INDI\n1 NAME Dan Ingemar* /Hilmersson/\n1 SEX M\n1 BIRT\n2 DATE 5 APR 1961\n2 PLAC Biskopsg\u00e5rden (O)\n1 FAMS @F3339@\n1 FAMC @F1089@\n1 CHAN\n2 DATE 24 AUG 2016\n0 @I4422@ INDI\n1 NAME Dan Kristoffer /Hilmersson/\n1 SEX M\n1 BIRT\n2 DATE 4 APR 1991\n2 PLAC S\u00e4ve (O)\n1 FAMC @F3339@\n1 CHAN\n2 DATE 2 MAR 2021\n0 @I4432@ INDI\n1 NAME Junita Viktoria /Hilmersson/\n1 SEX F\n1 BIRT\n2 DATE 2 MAR 1993\n2 PLAC S\u00e4ve (O)\n1 FAMC @F3339@\n1 CHAN\n2 DATE 2 MAR 2021\n0 @I4433@ INDI\n1 NAME Karl G\u00f6sta* Ingemar /Hilmersson/\n1 SEX M\n1 BIRT\n2 DATE 12 JAN 1929\n2 PLAC F\u00e4rgelanda (P)\n1 DEAT\n2 DATE 5 JUL 2017\n2 PLAC S\u00e4ve (O)Gullringev\u00e4gen 15 D\n1 FAMS @F1089@\n1 CHAN\n2 DATE 20 OCT 2022\n0 @I4439@ INDI\n1 NAME Linda Terse /Hilmersson/\n1 SEX F\n1 BIRT\n2 DATE 1 JUN 1998\n2 PLAC S\u00e4ve (O)\n1 FAMC @F3340@\n1 CHAN\n2 DATE 2 MAR 2021\n0 @I4444@ INDI\n1 NAME Mats* Lennart /Hilmersson/\n1 SEX M\n1 BIRT\n2 DATE 21 AUG 1966\n2 PLAC S\u00e4ve (O)\n1 FAMS @F3340@\n1 FAMC @F1089@\n1 CHAN\n2 DATE 24 AUG 2016\n0 @I4786@ INDI\n1 NAME Eva* Gunilla /Iseteg f Gustavsson/\n1 SEX F\n1 BIRT\n2 DATE 5 OCT 1954\n2 PLAC Masthugg (O)\n1 FAMS @F1747@\n1 FAMS @F1748@\n1 FAMC @F1080@\n1 CHAN\n2 DATE 2 MAR 2021\n0 @I4787@ INDI\n1 NAME Tommy* Rickard /Iseteg f Johansson/\n1 SEX M\n1 BIRT\n2 DATE 29 MAR 1955\n2 PLAC K\u00e4lleryd (F)\n1 FAMS @F1748@\n1 CHAN\n2 DATE 2 MAR 2021\n0 @I4788@ INDI\n1 NAME Sofia* Caroline /Iseteg Johannesson/\n1 SEX F\n1 BIRT\n2 DATE 17 MAY 1982\n2 PLAC Torslanda (O)\n1 FAMC @F1747@\n1 CHAN\n2 DATE 2 MAR 2021\n0 @I4789@ INDI\n1 NAME Emelie* Linnea /Iseteg/\n1 SEX F\n1 BIRT\n2 DATE 28 SEP 1986\n2 PLAC Torslanda (O)\n1 FAMC @F1747@\n1 CHAN\n2 DATE 2 MAR 2021\n0 @I4849@ INDI\n1 NAME Stina Camilla* /Jacobsson f Karp/\n1 SEX F\n1 BIRT\n2 DATE 31 MAY 1966\n2 PLAC Oskar Fredrik (O)\n1 FAMS @F1753@\n1 FAMC @F1085@\n1 CHAN\n2 DATE 26 AUG 2016\n0 @I4856@ INDI\n1 NAME Klas J\u00f6rgen* /Jacobsson/\n1 SEX M\n1 BIRT\n2 DATE 15 JUL 1964\n2 PLAC Bor\u00e5s Caroli (P)\n1 FAMS @F1753@\n1 CHAN\n2 DATE 29 AUG 2016\n0 @I4901@ INDI\n1 NAME Astor Amandus /Jakobsson/\n1 SEX M\n1 BIRT\n2 DATE 15 JAN 1992\n2 PLAC Annedal (O)\n1 FAMC @F1753@\n1 CHAN\n2 DATE 2 MAR 2021\n0 @I4904@ INDI\n1 NAME Carl Wictor /Jakobsson/\n1 SEX M\n1 BIRT\n2 DATE 20 SEP 1989\n2 PLAC Annedal (O)\n1 FAMC @F1753@\n1 CHAN\n2 DATE 2 MAR 2021\n0 @I4924@ INDI\n1 NAME Stina Ellen /Jakobsson/\n1 SEX F\n1 BIRT\n2 DATE 1 NOV 1994\n2 PLAC Sl\u00e4p (N)\n1 FAMC @F1753@\n1 CHAN\n2 DATE 2 MAR 2021\n0 @I5064@ INDI\n1 NAME Mats* Oscar Urban /Johannesson/\n1 SEX M\n1 BIRT\n2 DATE 20 FEB 1948\n2 PLAC \u00d6cker\u00f6 (O)\n1 FAMS @F1747@\n1 CHAN\n2 DATE 28 AUG 2016\n0 @I5624@ INDI\n1 NAME Ingela Marie /Johansson/\n1 SEX F\n1 BIRT\n2 DATE 2 MAR 1967\n2 PLAC Biskopsg\u00e5rden (O)\n1 FAMS @F3340@\n1 CHAN\n2 DATE 2 MAR 2021\n0 @I6694@ INDI\n1 NAME Ingrid Stina* Birgitta /Karp f Blomberg/\n1 SEX F\n1 BIRT\n2 DATE 4 JAN 1945\n2 PLAC Lundby (O)\n1 FAMS @F1085@\n1 FAMC @F672@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I6695@ INDI\n1 NAME Sofia Christina Isabelle /Karp \u00c5kerstr\u00f6m/\n1 SEX F\n1 BIRT\n2 DATE 7 AUG 1993\n2 PLAC Masthugg (O)\n1 FAMC @F1752@\n1 CHAN\n2 DATE 4 JUL 2024\n0 @I6696@ INDI\n1 NAME Hans Mikael* /Karp/\n1 SEX M\n1 BIRT\n2 DATE 19 SEP 1964\n2 PLAC Lundby (O)\n1 FAMS @F1752@\n1 FAMC @F1085@\n1 CHAN\n2 DATE 24 AUG 2016\n0 @I6697@ INDI\n1 NAME Hans* Olof Lennart /Karp/\n1 SEX M\n1 BIRT\n2 DATE 26 JUL 1941\n2 PLAC Bor\u00e5s Caroli (P)\n1 FAMS @F1085@\n1 CHAN\n2 DATE 26 AUG 2016\n0 @I6992@ INDI\n1 NAME Maria Ingegerd /Larsson f Abrahamsson/\n1 SEX F\n1 BIRT\n2 DATE 26 JAN 1912\n2 PLAC Torp (O)\n1 DEAT\n2 DATE 21 APR 1980\n2 PLAC Torp (O)\n1 FAMS @F674@\n1 FAMC @F161@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I7045@ INDI\n1 NAME Majvor* Ingegerd /Larsson f Karlsson/\n1 SEX F\n1 BIRT\n2 DATE 15 NOV 1945\n2 PLAC Jonsereds (O)\n1 FAMS @F1087@\n1 CHAN\n2 DATE 30 AUG 2016\n0 @I7073@ INDI\n1 NAME Reidun* Elisabeth /Larsson f Sl\u00e4ttberg/\n1 SEX F\n1 BIRT\n2 DATE 18 MAY 1947\n2 PLAC Lundby (O)\n1 FAMS @F1088@\n1 CHAN\n2 DATE 23 AUG 2016\n0 @I7103@ INDI\n1 NAME Ann-Kristin /Larsson/\n1 SEX F\n1 BIRT\n2 DATE 15 MAY 1970\n2 PLAC Grebbestad (O)\n1 FAMC @F1087@\n1 CHAN\n2 DATE 30 AUG 2016\n0 @I7193@ INDI\n1 NAME Jon Terje* /Larsson/\n1 SEX M\n1 BIRT\n2 DATE 7 APR 1981\n2 PLAC Gbg Domkyrkof\u00f6rs (O)\n1 FAMC @F1088@\n1 CHAN\n2 DATE 23 AUG 2016\n0 @I7227@ INDI\n1 NAME Knut Holger /Larsson/\n1 SEX M\n1 BIRT\n2 DATE 31 MAR 1910\n2 PLAC Uddevalla (O)\n1 DEAT\n2 DATE 25 OCT 2008\n2 PLAC R\u00f6ra (O)\n1 FAMS @F674@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I7239@ INDI\n1 NAME Lars* Holger /Larsson/\n1 SEX M\n1 BIRT\n2 DATE 3 FEB 1943\n2 PLAC Uddevalla (O)\n1 FAMS @F1087@\n1 FAMC @F674@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I7271@ INDI\n1 NAME Olof* Gunnar /Larsson/\n1 SEX M\n1 BIRT\n2 DATE 3 FEB 1943\n2 PLAC Uddevalla (O)\n1 FAMS @F1088@\n1 FAMC @F674@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I7286@ INDI\n1 NAME Per* Torgild /Larsson/\n1 SEX M\n1 BIRT\n2 DATE 3 SEP 1984\n2 PLAC Gbg Domkyrkof\u00f6rs (O)\n1 FAMC @F1088@\n1 CHAN\n2 DATE 23 AUG 2016\n0 @I7298@ INDI\n1 NAME Sofia* Helena /Larsson/\n1 SEX F\n1 BIRT\n2 DATE 23 JUL 1976\n2 PLAC Grebbestad (O)\n1 FAMC @F1087@\n1 CHAN\n2 DATE 30 AUG 2016\n0 @I8400@ INDI\n1 NAME Elvy Ulla* Margret /Niste f Blomberg/\n1 SEX F\n1 BIRT\n2 DATE 7 NOV 1936\n2 PLAC Lundby (O)\n1 FAMS @F1083@\n1 FAMC @F672@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I8401@ INDI\n1 NAME Erik Oscar* /Niste f Gustafsson/\n1 SEX M\n1 BIRT\n2 DATE 22 FEB 1985\n2 PLAC Biskopsg\u00e5rden (O)\n1 FAMS @F3722@\n1 CHAN\n2 DATE 14 SEP 2022\n0 @I8402@ INDI\n1 NAME Robin* Andreas /Niste f Lundgren/\n1 SEX M\n1 BIRT\n2 DATE 15 OCT 1986\n2 PLAC Lerum (P)\n1 FAMS @F3721@\n1 CHAN\n2 DATE 14 SEP 2022\n0 @I8403@ INDI\n1 NAME Lena Birgitta* /Niste f Samuelsson/\n1 SEX F\n1 BIRT\n2 DATE 14 MAY 1964\n2 PLAC Lundby (O)\n1 FAMS @F1751@\n1 CHAN\n2 DATE 23 AUG 2016\n0 @I8404@ INDI\n1 NAME Ingrid Gunilla* /Niste Nordblom/\n1 SEX F\n1 BIRT\n2 DATE 9 SEP 1960\n2 PLAC \u00d6rgryte (O)\n1 FAMS @F1750@\n1 FAMC @F1083@\n1 CHAN\n2 DATE 14 SEP 2022\n0 @I8405@ INDI\n1 NAME Anna* Linn\u00e9a Birgitta /Niste/\n1 SEX F\n1 BIRT\n2 DATE 6 AUG 1987\n2 PLAC Lundby (O)\n1 FAMS @F3721@\n1 FAMC @F1751@\n1 CHAN\n2 DATE 14 SEP 2022\n0 @I8406@ INDI\n1 NAME Benjamin* Klas Robin /Niste/\n1 SEX M\n1 BIRT\n2 DATE 20 JUN 2018\n2 PLAC S\u00e4tila (P)\n1 FAMC @F3721@\n1 CHAN\n2 DATE 14 SEP 2022\n0 @I8407@ INDI\n1 NAME Charlie* Olle Robin /Niste/\n1 SEX M\n1 BIRT\n2 DATE 8 OCT 2021\n2 PLAC S\u00e4tila (P)\n1 FAMC @F3721@\n1 CHAN\n2 DATE 14 SEP 2022\n0 @I8408@ INDI\n1 NAME Eva* Margareta /Niste/\n1 SEX F\n1 BIRT\n2 DATE 20 DEC 1965\n2 PLAC Br\u00e4mareg\u00e5rden (O)\n1 FAMS @F3719@\n1 FAMC @F1083@\n1 CHAN\n2 DATE 14 SEP 2022\n0 @I8409@ INDI\n1 NAME Hugo* Klas Oscar /Niste/\n1 SEX M\n1 BIRT\n2 DATE 17 SEP 2005\n2 PLAC S\u00e4tila (P)\n1 FAMC @F3722@\n1 CHAN\n2 DATE 14 SEP 2022\n0 @I8410@ INDI\n1 NAME Jakob* Klas Gustav /Niste/\n1 SEX M\n1 BIRT\n2 DATE 13 APR 1999\n2 PLAC Tuve (O)\n1 FAMC @F1751@\n1 CHAN\n2 DATE 14 SEP 2022\n0 @I8411@ INDI\n1 NAME Jenny* Ingrid Birgitta /Niste/\n1 SEX F\n1 BIRT\n2 DATE 28 NOV 1988\n2 PLAC Tuve (O)\n1 FAMS @F3722@\n1 FAMC @F1751@\n1 CHAN\n2 DATE 14 SEP 2022\n0 @I8412@ INDI\n1 NAME Klas* Gunnar /Niste/\n1 SEX M\n1 BIRT\n2 DATE 3 AUG 1963\n2 PLAC Br\u00e4mareg\u00e5rden (O)\n1 FAMS @F1751@\n1 FAMC @F1083@\n1 CHAN\n2 DATE 14 SEP 2022\n0 @I8413@ INDI\n1 NAME Noah* Oscar Eric /Niste/\n1 SEX M\n1 BIRT\n2 DATE 17 DEC 2009\n2 PLAC S\u00e4tila (P)\n1 FAMC @F3722@\n1 CHAN\n2 DATE 14 SEP 2022\n0 @I8414@ INDI\n1 NAME Olle* Gunnar /Niste/\n1 SEX M\n1 BIRT\n2 DATE 23 MAY 1936\n2 PLAC Oskarshamn (H)\n1 FAMS @F1083@\n1 CHAN\n2 DATE 26 AUG 2016\n0 @I8433@ INDI\n1 NAME Elsa Kerstin Julia* /Nordblom/\n1 SEX F\n1 BIRT\n2 DATE 19 MAR 1992\n2 PLAC Skredsvik (O)\n1 FAMC @F1750@\n1 CHAN\n2 DATE 14 SEP 2022\n0 @I8434@ INDI\n1 NAME Ernst Erik Mikael* /Nordblom/\n1 SEX M\n1 BIRT\n2 DATE 22 SEP 1953\n2 PLAC G\u00e4llinge (N)\n1 FAMS @F1750@\n1 CHAN\n2 DATE 1 SEP 2016\n0 @I8435@ INDI\n1 NAME Ida* Gunilla Margareta /Nordblom/\n1 SEX F\n1 BIRT\n2 DATE 10 SEP 1985\n2 PLAC Backa (O)\n1 FAMS @F3720@\n1 FAMC @F1750@\n1 CHAN\n2 DATE 14 SEP 2022\n0 @I8436@ INDI\n1 NAME Nils Gustav* Mikael /Nordblom/\n1 SEX M\n1 BIRT\n2 DATE 18 MAR 1990\n2 PLAC Skredsvik (O)\n1 FAMC @F1750@\n1 CHAN\n2 DATE 14 SEP 2022\n0 @I8437@ INDI\n1 NAME Selma* Ida Margareta /Nordblom/\n1 SEX F\n1 BIRT\n2 DATE 16 JUL 2016\n2 PLAC J\u00f6nk\u00f6ping (F)\n1 CHR\n2 DATE 2 OCT 2016\n2 PLAC J\u00f6nk\u00f6ping Sofia (F)\n1 FAMC @F3720@\n1 CHAN\n2 DATE 14 SEP 2022\n0 @I8438@ INDI\n1 NAME Ulla Malin* Sofia /Nordblom/\n1 SEX F\n1 BIRT\n2 DATE 1 AUG 1987\n2 PLAC Skredsvik (O)\n1 FAMC @F1750@\n1 CHAN\n2 DATE 14 SEP 2022\n0 @I8744@ INDI\n1 NAME Karin /Olsson f Berg/\n1 SEX F\n1 BIRT\n2 DATE 13 MAY 1911\n1 DEAT\n2 PLAC USA ?\n1 FAMS @F671@\n1 CHAN\n2 DATE 16 JUL 2016\n0 @I8953@ INDI\n1 NAME Nancy /Olsson f/\n1 SEX F\n1 BIRT\n2 PLAC USA\n1 FAMS @F1081@\n1 CHAN\n2 DATE 15 JUL 2016\n0 @I9006@ INDI\n1 NAME Ann Lynn /Olsson/\n1 SEX F\n1 BIRT\n2 DATE 17 APR 1967\n2 PLAC USA\n1 FAMS @F1749@\n1 FAMC @F1081@\n1 CHAN\n2 DATE 15 JUL 2016\n0 @I9085@ INDI\n1 NAME Bob /Olsson/\n1 SEX M\n1 BIRT\n2 DATE 2 FEB 1936\n2 PLAC USA\n1 FAMS @F1081@\n1 FAMC @F671@\n1 CHAN\n2 DATE 15 JUL 2016\n0 @I9422@ INDI\n1 NAME Olof Arnold /Olsson/\n1 SEX M\n1 BIRT\n2 DATE 20 FEB 1905\n2 PLAC Torp (O)\n1 DEAT\n2 DATE 8 JAN 1989\n2 PLAC USA ?\n1 FAMS @F671@\n1 FAMC @F161@\n1 CHAN\n2 DATE 16 JUL 2016\n0 @I10733@ INDI\n1 NAME Lilly Karin Gustava /St\u00e5larm f Abrahamsson/\n1 SEX F\n1 BIRT\n2 DATE 20 MAR 1915\n2 PLAC Torp (O)\n1 DEAT\n2 DATE 9 OCT 1991\n2 PLAC Tuve (O)\n1 FAMS @F675@\n1 FAMC @F161@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I10734@ INDI\n1 NAME Inger* Elisabeth /St\u00e5larm f Hagrud/\n1 SEX F\n1 BIRT\n2 DATE 5 NOV 1943\n2 PLAC Karl Johan (O)\n1 DEAT\n2 DATE 26 SEP 2020\n2 PLAC Skallsj\u00f6 (P)\n1 FAMS @F1091@\n1 CHAN\n2 DATE 2 MAY 2021\n0 @I10735@ INDI\n1 NAME Sven Anders /St\u00e5larm f Petersson/\n1 SEX M\n1 BIRT\n2 DATE 8 FEB 1968\n2 PLAC Halmstads Martin Luther (N)\n1 FAMS @F3341@\n1 CHAN\n2 DATE 2 MAR 2021\n0 @I10736@ INDI\n1 NAME Johan* Lennart /St\u00e5larm/\n1 SEX M\n1 BIRT\n2 DATE 3 FEB 1972\n2 PLAC Skallsj\u00f6 (P)\n1 FAMC @F1091@\n1 CHAN\n2 DATE 24 AUG 2016\n0 @I10737@ INDI\n1 NAME Maria* Helena /St\u00e5larm/\n1 SEX F\n1 BIRT\n2 DATE 19 MAR 1969\n2 PLAC Biskopsg\u00e5rden (O)\n1 FAMS @F3341@\n1 FAMC @F1091@\n1 CHAN\n2 DATE 24 AUG 2016\n0 @I10738@ INDI\n1 NAME Rolf Oskar Vilhelm /St\u00e5larm/\n1 SEX M\n1 BIRT\n2 DATE 23 JUN 1910\n2 PLAC Kungsholm (AB) Stockholm\n1 DEAT\n2 DATE 18 DEC 1989\n2 PLAC Tuve (O)\n1 FAMS @F675@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I10739@ INDI\n1 NAME Rune Lennart* /St\u00e5larm/\n1 SEX M\n1 BIRT\n2 DATE 25 OCT 1944\n2 PLAC Lundby (O)\n1 FAMS @F1091@\n1 FAMC @F675@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I10740@ INDI\n1 NAME Wilma Linnea /St\u00e5larm/\n1 SEX F\n1 BIRT\n2 DATE 2 OCT 1999\n2 PLAC R\u00e4ng (M)\n1 FAMC @F3341@\n1 CHAN\n2 DATE 2 MAR 2021\n0 @I11418@ INDI\n1 NAME Linda /Warner f Olsson/\n1 SEX F\n1 BIRT\n2 DATE 14 JAN 1947\n2 PLAC USA\n1 FAMS @F1082@\n1 FAMC @F671@\n1 CHAN\n2 DATE 16 JUL 2016\n0 @I11419@ INDI\n1 NAME Catrin /Warner/\n1 SEX F\n1 BIRT\n2 DATE JUL 1982\n2 PLAC USA\n1 FAMC @F1082@\n1 CHAN\n2 DATE 16 JAN 2016\n0 @I11420@ INDI\n1 NAME J Craig /Warner/\n1 SEX M\n1 BIRT\n2 PLAC USA\n1 FAMS @F1082@\n1 CHAN\n2 DATE 21 AUG 2016\n0 @I11668@ INDI\n1 NAME Hans Robert Alexander* /\u00c5kerstr\u00f6m Karp/\n1 SEX M\n1 BIRT\n2 DATE 4 DEC 1988\n2 PLAC Masthugg (O)\n1 FAMC @F1752@\n1 CHAN\n2 DATE 21 FEB 2017\n0 @I11671@ INDI\n1 NAME Barbro Elisabeth* /\u00c5kerstr\u00f6m/\n1 SEX F\n1 BIRT\n2 DATE 17 MAR 1965\n2 PLAC Biskopsg\u00e5rden (O)\n1 FAMS @F1752@\n1 CHAN\n2 DATE 24 AUG 2016\n0 @F161@ FAM\n1 HUSB @I254@\n1 WIFE @I103@\n1 CHIL @I3756@\n1 CHIL @I9422@\n1 CHIL @I2158@\n1 CHIL @I194@\n1 CHIL @I6992@\n1 CHIL @I263@\n1 CHIL @I10733@\n1 MARR\n2 DATE 21 NOV 1902\n1 CHAN\n2 DATE 11 MAR 2014\n0 @F670@ FAM\n1 HUSB @I3799@\n1 WIFE @I3756@\n1 CHIL @I3839@\n1 MARR\n2 DATE 1 NOV 1924\n1 CHAN\n2 DATE 29 MAR 2014\n0 @F671@ FAM\n1 HUSB @I9422@\n1 WIFE @I8744@\n1 CHIL @I9085@\n1 CHIL @I11418@\n1 MARR\n1 CHAN\n2 DATE 29 MAR 2014\n0 @F672@ FAM\n1 HUSB @I2160@\n1 WIFE @I2158@\n1 CHIL @I8400@\n1 CHIL @I2162@\n1 CHIL @I6694@\n1 MARR\n2 DATE 17 JUN 1933\n1 CHAN\n2 DATE 29 MAR 2014\n0 @F673@ FAM\n1 HUSB @I194@\n1 WIFE @I83@\n1 CHIL @I157@\n1 MARR\n2 DATE 21 DEC 1946\n1 CHAN\n2 DATE 29 MAR 2014\n0 @F674@ FAM\n1 HUSB @I7227@\n1 WIFE @I6992@\n1 CHIL @I7239@\n1 CHIL @I7271@\n1 MARR\n2 DATE 30 MAR 1935\n1 CHAN\n2 DATE 29 MAR 2014\n0 @F675@ FAM\n1 HUSB @I10738@\n1 WIFE @I10733@\n1 CHIL @I4414@\n1 CHIL @I3192@\n1 CHIL @I10739@\n1 MARR\n2 DATE 25 OCT 1935\n1 CHAN\n2 DATE 29 MAR 2014\n0 @F1080@ FAM\n1 HUSB @I3839@\n1 WIFE @I3772@\n1 CHIL @I3490@\n1 CHIL @I4786@\n1 MARR\n2 DATE 4 JUN 1949\n1 CHAN\n2 DATE 23 MAR 2015\n0 @F1081@ FAM\n1 HUSB @I9085@\n1 WIFE @I8953@\n1 CHIL @I9006@\n1 MARR\n1 CHAN\n2 DATE 23 MAR 2015\n0 @F1082@ FAM\n1 HUSB @I11420@\n1 WIFE @I11418@\n1 CHIL @I11419@\n1 MARR\n1 CHAN\n2 DATE 23 MAR 2015\n0 @F1083@ FAM\n1 HUSB @I8414@\n1 WIFE @I8400@\n1 CHIL @I8404@\n1 CHIL @I8412@\n1 CHIL @I8408@\n1 MARR\n2 DATE 19 MAR 1960\n1 CHAN\n2 DATE 23 MAR 2015\n0 @F1084@ FAM\n1 HUSB @I2162@\n1 WIFE @I2159@\n1 CHIL @I2161@\n1 CHIL @I2163@\n1 MARR\n2 DATE 23 JUL 1966\n1 CHAN\n2 DATE 23 MAR 2015\n0 @F1085@ FAM\n1 HUSB @I6697@\n1 WIFE @I6694@\n1 CHIL @I6696@\n1 CHIL @I4849@\n1 MARR\n2 DATE 18 JUL 1964\n1 CHAN\n2 DATE 23 MAR 2015\n0 @F1086@ FAM\n1 HUSB @I157@\n1 WIFE @I70@\n1 CHIL @I184@\n1 CHIL @I131@\n1 MARR\n2 DATE 20 NOV 1975\n1 DIV\n2 DATE 10 MAR 1992\n1 CHAN\n2 DATE 23 MAR 2015\n0 @F1087@ FAM\n1 HUSB @I7239@\n1 WIFE @I7045@\n1 CHIL @I7103@\n1 CHIL @I7298@\n1 MARR\n2 DATE 8 JUN 1968\n1 CHAN\n2 DATE 23 MAR 2015\n0 @F1088@ FAM\n1 HUSB @I7271@\n1 WIFE @I7073@\n1 CHIL @I7193@\n1 CHIL @I7286@\n1 MARR\n2 DATE 18 DEC 1989\n1 CHAN\n2 DATE 23 MAR 2015\n0 @F1089@ FAM\n1 HUSB @I4433@\n1 WIFE @I4414@\n1 CHIL @I4421@\n1 CHIL @I4444@\n1 MARR\n2 DATE 30 APR 1958\n1 CHAN\n2 DATE 23 MAR 2015\n0 @F1090@ FAM\n1 HUSB @I3231@\n1 WIFE @I3192@\n1 MARR\n2 DATE 17 DEC 1966\n1 CHAN\n2 DATE 23 MAR 2015\n0 @F1091@ FAM\n1 HUSB @I10739@\n1 WIFE @I10734@\n1 CHIL @I10737@\n1 CHIL @I10736@\n1 MARR\n2 DATE 23 JUN 1967\n1 CHAN\n2 DATE 23 MAR 2015\n0 @F1746@ FAM\n1 HUSB @I3494@\n1 WIFE @I3490@\n1 CHIL @I3492@\n1 CHIL @I3491@\n1 CHIL @I3493@\n1 MARR\n2 DATE 6 JUL 1974\n1 CHAN\n2 DATE 16 JAN 2016\n0 @F1747@ FAM\n1 HUSB @I5064@\n1 WIFE @I4786@\n1 CHIL @I4788@\n1 CHIL @I4789@\n1 MARR\n1 CHAN\n2 DATE 16 JAN 2016\n0 @F1748@ FAM\n1 HUSB @I4787@\n1 WIFE @I4786@\n1 MARR\n2 DATE 8 MAY 1987\n1 CHAN\n2 DATE 16 JAN 2016\n0 @F1749@ FAM\n1 HUSB @I4314@\n1 WIFE @I9006@\n1 MARR\n2 DATE 29 AUG 1987\n2 PLAC Hamilton Ohio USA\n1 CHAN\n2 DATE 16 JAN 2016\n0 @F1750@ FAM\n1 HUSB @I8434@\n1 WIFE @I8404@\n1 CHIL @I8435@\n1 CHIL @I8438@\n1 CHIL @I8436@\n1 CHIL @I8433@\n1 MARR\n2 DATE 12 MAY 1984\n1 CHAN\n2 DATE 16 JAN 2016\n0 @F1751@ FAM\n1 HUSB @I8412@\n1 WIFE @I8403@\n1 CHIL @I8405@\n1 CHIL @I8411@\n1 CHIL @I8410@\n1 MARR\n2 DATE 25 MAY 1985\n1 CHAN\n2 DATE 16 JAN 2016\n0 @F1752@ FAM\n1 HUSB @I6696@\n1 WIFE @I11671@\n1 CHIL @I11668@\n1 CHIL @I6695@\n1 ENGA\n1 EVEN\n2 TYPE Sambo\n1 CHAN\n2 DATE 16 JAN 2016\n0 @F1753@ FAM\n1 HUSB @I4856@\n1 WIFE @I4849@\n1 CHIL @I4904@\n1 CHIL @I4901@\n1 CHIL @I4924@\n1 MARR\n2 DATE 19 DEC 1989\n1 CHAN\n2 DATE 16 JAN 2016\n0 @F3339@ FAM\n1 HUSB @I4421@\n1 WIFE @I4409@\n1 CHIL @I4422@\n1 CHIL @I4432@\n1 MARR\n2 DATE 2 MAY 1992\n1 CHAN\n2 DATE 2 MAR 2021\n0 @F3340@ FAM\n1 HUSB @I4444@\n1 WIFE @I5624@\n1 CHIL @I4439@\n1 CHAN\n2 DATE 2 MAR 2021\n0 @F3341@ FAM\n1 HUSB @I10735@\n1 WIFE @I10737@\n1 CHIL @I10740@\n1 MARR\n2 DATE 22 AUG 1998\n1 CHAN\n2 DATE 2 MAR 2021\n0 @F3719@ FAM\n1 HUSB @I3577@\n1 WIFE @I8408@\n1 MARR\n1 CHAN\n2 DATE 14 SEP 2022\n0 @F3720@ FAM\n1 WIFE @I8435@\n1 CHIL @I8437@\n1 CHAN\n2 DATE 14 SEP 2022\n0 @F3721@ FAM\n1 HUSB @I8402@\n1 WIFE @I8405@\n1 CHIL @I8406@\n1 CHIL @I8407@\n1 MARR\n2 DATE 8 JUN 2019\n2 PLAC S\u00e4tila (P)\n1 CHAN\n2 DATE 14 SEP 2022\n0 @F3722@ FAM\n1 HUSB @I8401@\n1 WIFE @I8411@\n1 CHIL @I8409@\n1 CHIL @I8413@\n1 CHAN\n2 DATE 14 SEP 2022\n0 @SUBM1@ SUBM\n1 NAME \n1 ADDR\n1 PHON \n0 TRLR\n";
+  var s8=_s(function(){try{var pd=parseGedcom(IDA2_GED);return pd;}catch(e){return null;}}()),parsedData=s8[0],setParsedData=s8[1];var s9=_s(1970),sliderYear=s9[0],setSliderYear=s9[1];var s10=_s(false),isPlaying=s10[0],setIsPlaying=s10[1];var s11=_s(null),rangeStart=s11[0],setRangeStart=s11[1];var s12=_s(null),rangeEnd=s12[0],setRangeEnd=s12[1];
   var s14=_s(function(){try{var r=localStorage.getItem('slakttrads_photos');return r?JSON.parse(r):{};}catch(e){return {};}}()),photoUrls=s14[0],setPhotoUrls=s14[1];
+  var sPlU=useState(function(){try{var r=localStorage.getItem('slakttrads_place_photos');return r?JSON.parse(r):{};}catch(e){return {};}}()),placeUrls=sPlU[0],setPlaceUrls=sPlU[1];
   var s15=_s(0),photoCount=s15[0],setPhotoCount=s15[1];
   useEffect(function(){
     var c=0;
@@ -1968,6 +2054,14 @@ function GenealogyApp(){
   },[photoUrls]);
   var s16=_s(0),viewTrigger=s16[0],setViewTrigger=s16[1];
   var s17=_s("3d"),rightView=s17[0],setRightView=s17[1];
+  // Auto-compute layout from embedded GEDCOM on mount
+  useEffect(function(){
+    if(parsedData&&!layout){
+      setLayout(computeLayout(parsedData.individuals,parsedData.families));
+      setShowUp(false);
+    }
+  },[]);
+
   useEffect(function(){
     if(rightView==="kb"){
       setTimeout(function(){
@@ -2316,7 +2410,7 @@ function GenealogyApp(){
         </div>
         <div style={{flex:1,position:"relative",minHeight:0}}>
           {rightView==="map"&&<div style={{position:"relative",width:"100%",height:"100%",pointerEvents:"all"}}>
-            <MapView individuals={parsedData.individuals} year={sliderYear} rangeStart={effStart} rangeEnd={effEnd} selectedId={sel?sel.id:null} onSelect={mapSel} isSample={isSample} extraLocs={extraLocs} buildPersonLocations={buildPersonLocations} focusLat={mapFocus?mapFocus.lat:null} focusLon={mapFocus?mapFocus.lon:null} focusZoom={mapFocus?mapFocus.zoom:null} followPersonId={sel?sel.id:null} followYear={sliderYear} photoUrls={photoUrls} onPhotoClick={function(photos,idx){setPanelLightbox({photos:photos,idx:idx});}}/>
+            <MapView individuals={parsedData.individuals} year={sliderYear} rangeStart={effStart} rangeEnd={effEnd} selectedId={sel?sel.id:null} onSelect={mapSel} isSample={isSample} extraLocs={extraLocs} buildPersonLocations={buildPersonLocations} focusLat={mapFocus?mapFocus.lat:null} focusLon={mapFocus?mapFocus.lon:null} focusZoom={mapFocus?mapFocus.zoom:null} followPersonId={sel?sel.id:null} followYear={sliderYear} photoUrls={photoUrls} placeUrls={placeUrls} onPhotoClick={function(photos,idx){setPanelLightbox({photos:photos,idx:idx});}}/>
             {panelPerson&&(<div style={{position:"absolute",bottom:8,left:8,width:500,background:C.panel+"f5",borderRadius:14,border:"1px solid "+C.border,zIndex:10,backdropFilter:"blur(14px)",overflow:"hidden",pointerEvents:"all"}} onClick={function(e){e.stopPropagation();}}>
               <div style={{padding:"10px 12px 8px",background:"linear-gradient(135deg,"+(panelPerson.sex==="M"?C.male:panelPerson.sex==="F"?C.female:C.unknown)+"15,transparent)",borderBottom:"1px solid "+C.border}}>
                 <div style={{display:"flex",alignItems:"center",gap:8}}>
