@@ -771,7 +771,10 @@ function MapView(props) {
       attr:"© Lantmäteriet CC0"},
     ortho60:{name:"Flygfoto 1960",type:"wms",
       wmsUrl:function(bbox,W,H){var pr=Math.min(window.devicePixelRatio||1,2);var mw=Math.min(Math.round(W*pr),1024),mh=Math.min(Math.round(H*pr),1024);return"/api/wms-proxy?service=ortho60&bbox="+encodeURIComponent(bbox)+"&w="+mw+"&h="+mh;},
-      attr:"© Lantmäteriet CC0"},
+      attr:"© Lantmäteriet"},
+    ortho75:{name:"Flygfoto 1975",type:"wms",
+      wmsUrl:function(bbox,W,H){var pr=Math.min(window.devicePixelRatio||1,2);var mw=Math.min(Math.round(W*pr),1024),mh=Math.min(Math.round(H*pr),1024);return"/api/wms-proxy?service=ortho75&bbox="+encodeURIComponent(bbox)+"&w="+mw+"&h="+mh;},
+      attr:"© Lantmäteriet"},
 
   };
 
