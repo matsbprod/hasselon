@@ -772,9 +772,7 @@ function MapView(props) {
     ortho60:{name:"Flygfoto 1960",type:"wms",
       wmsUrl:function(bbox,W,H){var pr=Math.min(window.devicePixelRatio||1,2);var mw=Math.min(Math.round(W*pr),1024),mh=Math.min(Math.round(H*pr),1024);return"/api/wms-proxy?service=ortho60&bbox="+encodeURIComponent(bbox)+"&w="+mw+"&h="+mh;},
       attr:"© Lantmäteriet CC0"},
-    ortho75:{name:"Flygfoto 1975",type:"wms",
-      wmsUrl:function(bbox,W,H){var pr=Math.min(window.devicePixelRatio||1,2);var mw=Math.min(Math.round(W*pr),1024),mh=Math.min(Math.round(H*pr),1024);return"/api/wms-proxy?service=ortho75&bbox="+encodeURIComponent(bbox)+"&w="+mw+"&h="+mh;},
-      attr:"© Lantmäteriet CC0"},
+
   };
 
   // Slippy map math (Web Mercator)
@@ -1168,7 +1166,7 @@ function MapView(props) {
         onMouseEnter={function(){overTooltipRef.current=true;}}
         onMouseLeave={function(){overTooltipRef.current=false;setHoverPerson(null);}}>
         {hoverPerson.photo
-          ?<img src={hoverPerson.photo.url} style={{width:"100%",height:110,objectFit:"cover",display:"block",cursor:"pointer"}}
+          ?<img src={hoverPerson.photo.url} style={{width:"100%",height:220,objectFit:"cover",display:"block",cursor:"pointer"}}
               onClick={function(){if(onPhotoClick&&hphotos.length)onPhotoClick(hphotos,Math.max(0,hphotos.indexOf(hoverPerson.photo)));}}
               onError={function(e){e.target.style.display="none";}}/>
           :<div style={{height:40,display:"flex",alignItems:"center",justifyContent:"center",color:"#8b949e",fontSize:18}}>📷</div>}
@@ -1198,6 +1196,14 @@ function MapView(props) {
         {lmKey&&<div style={{fontSize:9,color:"#66d9a0",marginTop:3}}>✓ Nyckel sparad</div>}
       </div>)}
       <button onClick={fitAll} style={{padding:"3px 8px",fontSize:9,fontWeight:600,border:"none",borderRadius:4,cursor:"pointer",background:"#66d9a0",color:"#fff"}} title="Zoom to show all people">Fit All</button>
+      {selId&&<button onClick={function(){
+        var sel2=alive.find(function(a){return a.id===selId;});
+        if(!sel2) return;
+        var v=viewRef.current;
+        v.cx=sel2.lon;v.cy=sel2.lat;v.zoom=14;
+        Object.keys(tileCache.current).forEach(function(k){if(k.indexOf('/wms/')>=0)delete tileCache.current[k];});
+        drawMap();
+      }} style={{padding:"3px 8px",fontSize:9,fontWeight:600,border:"none",borderRadius:4,cursor:"pointer",background:"#4a9eff",color:"#fff"}} title="Zooma in på vald person">Zoom till vald</button>}
     </div>
   </div>);
 }
