@@ -1,0 +1,20 @@
+{
+  "@I2158@": [
+    {
+      "place": "Husegärdet, Torp, Orust",
+      "from": 1907,
+      "to": 1925,
+      "type": "birth",
+      "lat": 58.2336,
+      "lon": 11.6983
+    },
+    {
+      "place": "Biskopsgatan 7, Lundby , Göteborg",
+      "from": 1939,
+      "to": 2001,
+      "type": "resi",
+      "lat": 57.7066,
+      "lon": 11.9085
+    }
+  ]
+}
