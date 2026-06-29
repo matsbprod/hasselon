@@ -1793,6 +1793,7 @@ function PlacesEditor({individuals,families,extraLocs,setExtraLocs,selectedId,bu
     next[editId]=cur;
     setExtraLocs(next);
     try{localStorage.setItem('slakttrads_locations',JSON.stringify(next));}catch(e){}
+    pushLocsToGitHub(next);
     setEditIdx(null);
   }
 
@@ -1804,6 +1805,7 @@ function PlacesEditor({individuals,families,extraLocs,setExtraLocs,selectedId,bu
     if(!next[editId])delete next[editId];
     setExtraLocs(next);
     try{localStorage.setItem('slakttrads_locations',JSON.stringify(next));}catch(e){}
+    pushLocsToGitHub(next);
     setEditIdx(null);
   }
 
@@ -1812,6 +1814,39 @@ function PlacesEditor({individuals,families,extraLocs,setExtraLocs,selectedId,bu
     var url=URL.createObjectURL(blob);
     var a=document.createElement("a");a.href=url;a.download="locations.json";a.click();
     URL.revokeObjectURL(url);
+  }
+
+  function pushLocsToGitHub(data){
+    // Read GitHub config - use same XOR-decoded defaults as PhotoManager
+    var ghRaw=null;
+    try{ghRaw=JSON.parse(localStorage.getItem('slakttrads_gh')||'{}');}catch(e){}
+    var GH_KEY="hasselon2025";
+    var GH_T=[15,9,3,44,52,26,23,55,68,5,92,3,90,54,53,20,35,30,38,52,125,90,84,83,59,4,23,60,42,36,13,20,70,85,3,112,44,88,58,11];
+    var GH_R=[5,0,7,0,7,28,29,1,86,31,90,84,27,18,22,31,10,2];
+    function xd(arr,key){return arr.map(function(c,i){return String.fromCharCode(c^key.charCodeAt(i%key.length));}).join("");}
+    var token=(ghRaw&&ghRaw.token)||xd(GH_T,GH_KEY);
+    var repo=(ghRaw&&ghRaw.repo)||xd(GH_R,GH_KEY);
+    var branch=(ghRaw&&ghRaw.branch)||"main";
+    if(!token||!repo) return;
+    var path="slakttrads/locations.json";
+    var apiUrl="https://api.github.com/repos/"+repo+"/contents/"+path;
+    var headers={"Authorization":"token "+token,"Accept":"application/vnd.github.v3+json","Content-Type":"application/json"};
+    var body=JSON.stringify(data,null,2);
+    var b64=btoa(unescape(encodeURIComponent(body)));
+    // Get current SHA first
+    fetch(apiUrl,{headers:headers})
+      .then(function(r){return r.ok?r.json():null;})
+      .catch(function(){return null;})
+      .then(function(existing){
+        var req={message:"Uppdatera platser",content:b64,branch:branch};
+        if(existing&&existing.sha) req.sha=existing.sha;
+        return fetch(apiUrl,{method:"PUT",headers:headers,body:JSON.stringify(req)});
+      })
+      .then(function(r){
+        if(r&&r.ok) console.log("Platser sparade till GitHub");
+        else r&&r.text().then(function(t){console.warn("GitHub push failed:",t);});
+      })
+      .catch(function(e){console.warn("GitHub push error:",e);});
   }
 
   // Navigate to prev/next person
@@ -2078,6 +2113,27 @@ function GenealogyApp(){
     if(parsedData&&!layout){
       setLayout(computeLayout(parsedData.individuals,parsedData.families));
       setShowUp(false);
+    }
+    // Load locations.json from GitHub
+    var GH_KEY="hasselon2025";
+    var GH_T=[15,9,3,44,52,26,23,55,68,5,92,3,90,54,53,20,35,30,38,52,125,90,84,83,59,4,23,60,42,36,13,20,70,85,3,112,44,88,58,11];
+    var GH_R=[5,0,7,0,7,28,29,1,86,31,90,84,27,18,22,31,10,2];
+    function xd2(arr,key){return arr.map(function(c,i){return String.fromCharCode(c^key.charCodeAt(i%key.length));}).join("");}
+    var ghRaw=null;try{ghRaw=JSON.parse(localStorage.getItem('slakttrads_gh')||'{}');}catch(e){}
+    var token=(ghRaw&&ghRaw.token)||xd2(GH_T,GH_KEY);
+    var repo=(ghRaw&&ghRaw.repo)||xd2(GH_R,GH_KEY);
+    var branch=(ghRaw&&ghRaw.branch)||"main";
+    if(token&&repo){
+      fetch("https://raw.githubusercontent.com/"+repo+"/"+branch+"/slakttrads/locations.json")
+        .then(function(r){return r.ok?r.json():null;})
+        .then(function(data){
+          if(data&&typeof data==="object"){
+            setExtraLocs(data);
+            try{localStorage.setItem('slakttrads_locations',JSON.stringify(data));}catch(e){}
+            console.log("Platser laddade från GitHub:",Object.keys(data).length,"personer");
+          }
+        })
+        .catch(function(e){console.log("Inga platser på GitHub ännu:",e.message);});
     }
   },[]);
 
