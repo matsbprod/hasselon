@@ -2058,7 +2058,7 @@ function PlacesEditor({individuals,families,extraLocs,setExtraLocs,selectedId,bu
 
 
 function GenealogyApp(){
-  var _s=useState;var s1=_s(null),layout=s1[0],setLayout=s1[1];var s2=_s(null),sel=s2[0],setSel=s2[1];var sInsp=_s(null),inspPerson=sInsp[0],setInspPerson=sInsp[1];var sLB=_s(null),panelLightbox=sLB[0],setPanelLightbox=sLB[1];var s3=_s(""),search=s3[0],setSearch=s3[1];var s4=_s(new Set()),hlIds=s4[0],setHlIds=s4[1];var s5=_s(true),showUp=s5[0],setShowUp=s5[1];var s6=_s({}),photoTex=s6[0],setPhotoTex=s6[1];var s7=_s(true),isSample=s7[0],setIsSample=s7[1];var s8=_s(null),parsedData=s8[0],setParsedData=s8[1];var sGL=_s(true),gedcomLoading=sGL[0],setGedcomLoading=sGL[1];var sGE=_s(null),gedcomError=sGE[0],setGedcomError=sGE[1];var s9=_s(1970),sliderYear=s9[0],setSliderYear=s9[1];var s10=_s(false),isPlaying=s10[0],setIsPlaying=s10[1];var s11=_s(null),rangeStart=s11[0],setRangeStart=s11[1];var s12=_s(null),rangeEnd=s12[0],setRangeEnd=s12[1];
+  var _s=useState;var s1=_s(null),layout=s1[0],setLayout=s1[1];var s2=_s(null),sel=s2[0],setSel=s2[1];var sInsp=_s(null),inspPerson=sInsp[0],setInspPerson=sInsp[1];var sLB=_s(null),panelLightbox=sLB[0],setPanelLightbox=sLB[1];var s3=_s(""),search=s3[0],setSearch=s3[1];var s4=_s(new Set()),hlIds=s4[0],setHlIds=s4[1];var s5=_s(true),showUp=s5[0],setShowUp=s5[1];var s6=_s({}),photoTex=s6[0],setPhotoTex=s6[1];var s7=_s(true),isSample=s7[0],setIsSample=s7[1];var s8=_s(null),parsedData=s8[0],setParsedData=s8[1];var sGL=_s(false),gedcomLoading=sGL[0],setGedcomLoading=sGL[1];var sGE=_s(null),gedcomError=sGE[0],setGedcomError=sGE[1];var s9=_s(1970),sliderYear=s9[0],setSliderYear=s9[1];var s10=_s(false),isPlaying=s10[0],setIsPlaying=s10[1];var s11=_s(null),rangeStart=s11[0],setRangeStart=s11[1];var s12=_s(null),rangeEnd=s12[0],setRangeEnd=s12[1];
   var s14=_s(function(){try{var r=localStorage.getItem('slakttrads_photos');return r?JSON.parse(r):{};}catch(e){return {};}}()),photoUrls=s14[0],setPhotoUrls=s14[1];
   var sPlU=useState(function(){try{var r=localStorage.getItem('slakttrads_place_photos');return r?JSON.parse(r):{};}catch(e){return {};}}()),placeUrls=sPlU[0],setPlaceUrls=sPlU[1];
   var s15=_s(0),photoCount=s15[0],setPhotoCount=s15[1];
@@ -2127,28 +2127,6 @@ function GenealogyApp(){
     var repo=(ghRaw&&ghRaw.repo)||xd2(GH_R,GH_KEY);
     var branch=(ghRaw&&ghRaw.branch)||"main";
     if(token&&repo){
-      // Load GEDCOM from GitHub
-      setGedcomLoading(true);setGedcomError(null);
-      fetch("https://raw.githubusercontent.com/"+repo+"/"+branch+"/slakttrads/hela.ged")
-        .then(function(r){
-          if(!r.ok) throw new Error("HTTP "+r.status);
-          return r.text();
-        })
-        .then(function(gedText){
-          try{
-            var pd=parseGedcom(gedText);
-            setParsedData(pd);
-            setGedcomLoading(false);
-            console.log("GEDCOM laddad:",Object.keys(pd.individuals).length,"personer");
-          }catch(e){
-            setGedcomError("Fel vid parsning: "+e.message);
-            setGedcomLoading(false);
-          }
-        })
-        .catch(function(e){
-          setGedcomError("Kunde inte ladda hela.ged: "+e.message);
-          setGedcomLoading(false);
-        });
       // Load locations.json from GitHub
       fetch("https://raw.githubusercontent.com/"+repo+"/"+branch+"/slakttrads/locations.json")
         .then(function(r){return r.ok?r.json():null;})
@@ -2458,23 +2436,96 @@ function GenealogyApp(){
         {gedcomError&&<div style={{color:"#ff6b6b",fontSize:12,maxWidth:320,textAlign:"center",padding:"8px 16px",background:"rgba(255,80,80,0.1)",borderRadius:8,border:"1px solid rgba(255,80,80,0.3)"}}>{gedcomError}</div>}
       </div>)}
       {showUp&&!gedcomLoading&&(<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",zIndex:100,background:"linear-gradient(135deg,#080c14,#0f1928)"}}>
-        <div style={{textAlign:"center",maxWidth:520,padding:40}}>
+        <div style={{textAlign:"center",maxWidth:580,padding:40}}>
           <div style={{width:60,height:60,margin:"0 auto 20px",borderRadius:14,background:"linear-gradient(135deg,#4a9eff,#ff6b9d)",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path d="M9 22V12h6v10"/></svg></div>
-          <div style={{fontSize:11,letterSpacing:5,color:C.dim,marginBottom:10,textTransform:"uppercase"}}>3D Genealogy Explorer</div>
-          <h1 style={{fontSize:36,fontWeight:300,margin:"0 0 6px"}}>Family Landscape</h1>
-          <p style={{color:C.dim,fontSize:14,lineHeight:1.7,margin:"0 0 30px"}}>Explore your ancestry as a 3D cityscape with an interactive geographic timeline.</p>
-          <div style={{display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap"}}>
-            <label style={{padding:"12px 24px",background:"linear-gradient(135deg,#4a9eff,#3a7fd5)",color:"#fff",borderRadius:10,cursor:"pointer",fontSize:13,fontWeight:600}}>Upload .ged<input type="file" accept=".ged,.gedcom" onChange={handleFile} style={{display:"none"}}/></label>
-            <button onClick={loadSample} style={{padding:"12px 24px",background:"rgba(255,255,255,0.05)",color:C.text,borderRadius:10,cursor:"pointer",fontSize:13,fontWeight:600,border:"1px solid "+C.border}}>Sample Family</button>
+          <div style={{fontSize:11,letterSpacing:5,color:C.dim,marginBottom:10,textTransform:"uppercase"}}>Interaktivt Släktträd</div>
+          <h1 style={{fontSize:36,fontWeight:300,margin:"0 0 6px",color:C.text}}>Family Landscape</h1>
+          <p style={{color:C.dim,fontSize:14,lineHeight:1.7,margin:"0 0 32px"}}>Utforska din släkt som ett interaktivt 3D-landskap med geografisk tidslinje.</p>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:24}}>
+            <button onClick={function(){
+              setGedcomLoading(true);setGedcomError(null);
+              var GH_KEY2="hasselon2025";
+              var GH_T2=[15,9,3,44,52,26,23,55,68,5,92,3,90,54,53,20,35,30,38,52,125,90,84,83,59,4,23,60,42,36,13,20,70,85,3,112,44,88,58,11];
+              var GH_R2=[5,0,7,0,7,28,29,1,86,31,90,84,27,18,22,31,10,2];
+              function xd3(arr,key){return arr.map(function(c,i){return String.fromCharCode(c^key.charCodeAt(i%key.length));}).join("");}
+              var ghRaw2=null;try{ghRaw2=JSON.parse(localStorage.getItem('slakttrads_gh')||'{}');}catch(e){}
+              var repo2=(ghRaw2&&ghRaw2.repo)||xd3(GH_R2,GH_KEY2);
+              var branch2=(ghRaw2&&ghRaw2.branch)||"main";
+              fetch("https://raw.githubusercontent.com/"+repo2+"/"+branch2+"/slakttrads/Ida2.ged")
+                .then(function(r){return r.ok?r.text():Promise.reject(r.status);})
+                .then(function(t){var pd=parseGedcom(t);setParsedData(pd);setGedcomLoading(false);setShowUp(false);setIsSample(true);})
+                .catch(function(e){setGedcomError("Kunde inte ladda Ida2.ged: "+e);setGedcomLoading(false);});
+            }} style={{padding:"20px 16px",background:"rgba(74,158,255,0.1)",border:"1px solid rgba(74,158,255,0.4)",borderRadius:12,cursor:"pointer",color:C.text,textAlign:"left"}}>
+              <div style={{fontSize:22,marginBottom:8}}>&#x1F4D6;</div>
+              <div style={{fontSize:14,fontWeight:600,marginBottom:4,color:"#4a9eff"}}>Ida2 — Testträdet</div>
+              <div style={{fontSize:11,color:C.dim,lineHeight:1.5}}>Ca 100 personer · Hasselon/Blomberg-släkten · Snabb laddning</div>
+            </button>
+            <button onClick={function(){
+              setGedcomLoading(true);setGedcomError(null);
+              var GH_KEY3="hasselon2025";
+              var GH_T3=[15,9,3,44,52,26,23,55,68,5,92,3,90,54,53,20,35,30,38,52,125,90,84,83,59,4,23,60,42,36,13,20,70,85,3,112,44,88,58,11];
+              var GH_R3=[5,0,7,0,7,28,29,1,86,31,90,84,27,18,22,31,10,2];
+              function xd4(arr,key){return arr.map(function(c,i){return String.fromCharCode(c^key.charCodeAt(i%key.length));}).join("");}
+              var ghRaw3=null;try{ghRaw3=JSON.parse(localStorage.getItem('slakttrads_gh')||'{}');}catch(e){}
+              var repo3=(ghRaw3&&ghRaw3.repo)||xd4(GH_R3,GH_KEY3);
+              var branch3=(ghRaw3&&ghRaw3.branch)||"main";
+              fetch("https://raw.githubusercontent.com/"+repo3+"/"+branch3+"/slakttrads/hela.ged")
+                .then(function(r){return r.ok?r.text():Promise.reject(r.status);})
+                .then(function(t){var pd=parseGedcom(t);setParsedData(pd);setGedcomLoading(false);setShowUp(false);setIsSample(false);})
+                .catch(function(e){setGedcomError("Kunde inte ladda hela.ged: "+e);setGedcomLoading(false);});
+            }} style={{padding:"20px 16px",background:"rgba(102,217,160,0.08)",border:"1px solid rgba(102,217,160,0.35)",borderRadius:12,cursor:"pointer",color:C.text,textAlign:"left"}}>
+              <div style={{fontSize:22,marginBottom:8}}>&#x1F333;</div>
+              <div style={{fontSize:14,fontWeight:600,marginBottom:4,color:"#66d9a0"}}>Hela släktträdet</div>
+              <div style={{fontSize:11,color:C.dim,lineHeight:1.5}}>11 762 personer · 3 785 familjer · Kan ta några sekunder</div>
+            </button>
           </div>
-          <p style={{marginTop:24,color:C.dim,fontSize:11}}>GEDCOM 5.5 · Map: Western Sweden with zoom/pan · <a href="https://github.com/matsbprod/hasselon" target="_blank" style={{color:C.accent}}>locations.json</a></p>
+          <div style={{borderTop:"1px solid "+C.border,paddingTop:20,display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap"}}>
+            <label style={{padding:"9px 18px",background:"rgba(255,255,255,0.05)",color:C.dim,borderRadius:8,cursor:"pointer",fontSize:12,border:"1px solid "+C.border}}>
+              Ladda upp egen .ged
+              <input type="file" accept=".ged,.gedcom" onChange={handleFile} style={{display:"none"}}/>
+            </label>
+          </div>
+          {gedcomError&&<div style={{marginTop:16,color:"#ff6b6b",fontSize:12,padding:"8px 16px",background:"rgba(255,80,80,0.1)",borderRadius:8,border:"1px solid rgba(255,80,80,0.3)"}}>{gedcomError}</div>}
         </div>
       </div>)}
       {!showUp&&!gedcomLoading&&(<div style={{flex:1,position:"relative",minWidth:0,display:rightView==="3d"?"block":"none"}}>
         <div style={{width:"100%",height:"100%",position:"absolute",inset:0}}><canvas ref={cvRef} style={{width:"100%",height:"100%",display:"block"}}/></div>
         <div style={{position:"absolute",top:8,left:8,right:8,display:"flex",gap:6,alignItems:"center",zIndex:10,pointerEvents:"none",flexWrap:"wrap"}}>
           <div style={{...PS,pointerEvents:"all",padding:"5px 10px",fontSize:10,fontWeight:600,letterSpacing:2,color:C.dim,textTransform:"uppercase"}}>Family Landscape</div>
-          <div style={{...PS,pointerEvents:"all",flex:1,maxWidth:220,padding:"4px 10px"}}><div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:11,opacity:0.5}}>&#x1F50D;</span><input type="text" placeholder="Search..." value={search} onChange={function(e){setSearch(e.target.value);}} style={{width:"100%",background:"transparent",border:"none",outline:"none",color:C.text,fontSize:12,fontFamily:"inherit"}}/>{search&&<button onClick={function(){setSearch("");}} style={{background:"none",border:"none",color:C.dim,cursor:"pointer",fontSize:13,padding:0}}>x</button>}</div></div>
+          <div style={{pointerEvents:"all",flex:1,maxWidth:280,padding:"4px 10px",position:"relative",zIndex:300}}>
+            <div style={{display:"flex",alignItems:"center",gap:6,background:"rgba(255,255,255,0.06)",borderRadius:6,padding:"3px 8px"}}>
+              <span style={{fontSize:11,opacity:0.5}}>&#x1F50D;</span>
+              <input type="text" placeholder="Sök person..." value={search} onChange={function(e){setSearch(e.target.value);}}
+                style={{width:"100%",background:"transparent",border:"none",outline:"none",color:C.text,fontSize:12,fontFamily:"inherit"}}/>
+              {search&&<button onClick={function(){setSearch("");setHlIds(new Set());}} style={{background:"none",border:"none",color:C.dim,cursor:"pointer",fontSize:13,padding:0}}>&#x2715;</button>}
+            </div>
+            {search.trim().length>1&&layout&&(function(){
+              var q=search.toLowerCase();
+              var hits=layout.nodes.filter(function(n){return n.name&&n.name.toLowerCase().indexOf(q)>=0;}).slice(0,12);
+              if(!hits.length) return null;
+              return(<div style={{position:"absolute",top:"100%",left:0,right:0,background:C.panel,border:"1px solid "+C.border,borderRadius:8,zIndex:200,maxHeight:280,overflowY:"auto",boxShadow:"0 8px 24px rgba(0,0,0,0.5)",marginTop:4}}>
+                {hits.map(function(n){
+                  var ind=parsedData&&parsedData.individuals&&parsedData.individuals[n.id];
+                  var birth=ind&&ind.birthDate?ind.birthDate:"";
+                  var death=ind&&ind.deathDate?ind.deathDate:"";
+                  return(<div key={n.id} style={{padding:"8px 12px",cursor:"pointer",borderBottom:"1px solid "+C.border+"44",display:"flex",alignItems:"center",gap:8}}
+                    onMouseDown={function(e){e.preventDefault();
+                      setSearch("");setHlIds(new Set());
+                      var node=layout.nodes.find(function(nd){return nd.id===n.id;});
+                      if(node){setSel(node);setInspPerson(ind?Object.assign({},ind,{id:n.id,generation:node.generation}):null);}
+                    }}>
+                    {photoUrls[n.id]&&photoUrls[n.id][0]
+                      ?<img src={photoUrls[n.id][0].url} style={{width:28,height:28,borderRadius:4,objectFit:"cover",flexShrink:0}}/>
+                      :<div style={{width:28,height:28,borderRadius:4,background:"rgba(255,255,255,0.06)",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:C.dim}}>{n.sex==="F"?"&#9792;":"&#9794;"}</div>}
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:12,fontWeight:500,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{n.name}</div>
+                      {(birth||death)&&<div style={{fontSize:10,color:C.dim}}>{birth}{death?" – "+death:""}</div>}
+                    </div>
+                  </div>);
+                })}
+              </div>);
+            })()}
+          </div>
           {stats&&<div style={{...PS,pointerEvents:"all",padding:"5px 10px",fontSize:10}}><span style={{color:C.dim}}>People </span><strong>{stats.p}</strong><span style={{color:C.dim,marginLeft:6}}>Gen </span><strong>{stats.g}</strong>{photoCount>0&&<span style={{color:"#66d9a0",marginLeft:6}}>{photoCount} photos</span>}</div>}
           <label style={{...PS,pointerEvents:"all",padding:"5px 10px",cursor:"pointer",fontSize:10,color:C.accent,fontWeight:600}}>+<input type="file" accept=".ged,.gedcom" onChange={handleFile} style={{display:"none"}}/></label>
           <label style={{...PS,pointerEvents:"all",padding:"5px 10px",cursor:"pointer",fontSize:10,color:"#c4a632",fontWeight:600}} title="Ladda locations.json">
@@ -2495,14 +2546,7 @@ function GenealogyApp(){
           </div>
           <div style={{padding:"8px 14px 10px",fontSize:12,display:"grid",gap:4}}>
             {panelPerson.birthDate&&<div><span style={{color:C.dim}}>Född </span>{panelPerson.birthDate}{panelPerson.birthPlace?" · "+panelPerson.birthPlace:""}</div>}
-              {panelPerson.birthPlace&&lookupLocation(panelPerson.birthPlace)&&(<div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:4}}>
-                {(function(){var _loc=lookupLocation(panelPerson.birthPlace)||{};var _z=placeZoom(panelPerson.birthPlace);return [
-                  ["📜 Ekon.karta",0x10000,"rgba(255,200,50,0.15)","rgba(255,200,50,0.4)","#ffd060"],
-                  ["✈ Flygfoto 1960",0x100,"rgba(100,180,255,0.15)","rgba(100,180,255,0.4)","#64b4ff"],
-                  ["✈ Flygfoto 1975",0x200,"rgba(100,180,255,0.15)","rgba(100,180,255,0.4)","#64b4ff"],
-                  ["🗺 Topo",0x1000,"rgba(100,200,100,0.15)","rgba(100,200,100,0.4)","#80d080"]
-                ].map(function(kb){return <a key={kb[0]} href={kartbildUrl(_loc.lat,_loc.lon,kb[1],_z)} target="_blank" style={{fontSize:9,padding:"2px 6px",background:kb[2],border:"1px solid "+kb[3],borderRadius:3,color:kb[4],textDecoration:"none"}}>{kb[0]}</a>;})})()}
-              </div>)}
+
               {panelPerson.deathDate&&<div><span style={{color:C.dim}}>Död </span>{panelPerson.deathDate}{panelPerson.deathPlace?" · "+panelPerson.deathPlace:""}</div>}
           </div>
           {photoUrls[panelPerson.id]&&photoUrls[panelPerson.id].length>0&&(
