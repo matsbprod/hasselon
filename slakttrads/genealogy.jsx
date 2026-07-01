@@ -1170,7 +1170,13 @@ function MapView(props) {
         onMouseLeave={function(){overTooltipRef.current=false;setHoverPerson(null);}}>
         {hoverPerson.photo
           ?<img src={hoverPerson.photo.url} style={{width:"100%",height:220,objectFit:"cover",display:"block",cursor:"pointer"}}
-              onClick={function(){if(onPhotoClick&&hphotos.length)onPhotoClick(hphotos,Math.max(0,hphotos.indexOf(hoverPerson.photo)));}}
+              onClick={function(){
+                var photos2=hoverPerson.placePhotos&&hoverPerson.placePhotos.length>0?hoverPerson.placePhotos:hphotos;
+                if(onPhotoClick&&photos2.length){
+                  var idx2=photos2.indexOf(hoverPerson.photo);
+                  onPhotoClick(photos2,Math.max(0,idx2));
+                }
+              }}
               onError={function(e){e.target.style.display="none";}}/>
           :<div style={{height:40,display:"flex",alignItems:"center",justifyContent:"center",color:"#8b949e",fontSize:18}}>📷</div>}
         <div style={{padding:"7px 9px 6px"}}>
@@ -2404,7 +2410,14 @@ function GenealogyApp(){
 
   var stats=layout?{p:layout.nodes.length,g:layout.maxGeneration+1}:null;
   var PS={background:C.panel+"e8",borderRadius:10,border:"1px solid "+C.border,backdropFilter:"blur(10px)"};
-  function mapSel(id){if(!id){setSel(null);return;}if(!layout)return;setSel(layout.nodes.find(function(n){return n.id===id;})||null);}
+  function mapSel(id){
+    if(!id){setSel(null);setInspPerson(null);return;}
+    if(!layout||!parsedData)return;
+    var node=layout.nodes.find(function(n){return n.id===id;})||null;
+    setSel(node);
+    var ind=parsedData.individuals[id];
+    if(ind) setInspPerson(Object.assign({},ind,{id:id,generation:node?node.generation:0}));
+  }
 
     var panelPerson=inspPerson||sel;
 
