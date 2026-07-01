@@ -2272,7 +2272,7 @@ function GenealogyApp(){
       })(pending[pi]);
     }
   },[]);
-  useEffect(function(){if(!layout||!search.trim()){setHlIds(new Set());return;}var q=search.toLowerCase();setHlIds(new Set(layout.nodes.filter(function(n){return n.name.toLowerCase().indexOf(q)>=0;}).map(function(n){return n.id;})));},[search,layout]);
+  // search highlighting via searchDropdown state, not hlIds
 
   /* ── 3D SCENE — proper tree connectors ─────────────────── */
   useEffect(function(){
@@ -2400,16 +2400,7 @@ function GenealogyApp(){
     return function(){cancelAnimationFrame(frameRef.current);window.removeEventListener("resize",onR);cv.removeEventListener("mousedown",onD);cv.removeEventListener("mouseup",onU);cv.removeEventListener("mousemove",onM);cv.removeEventListener("wheel",onW);cv.removeEventListener("click",onC);cv.removeEventListener("contextmenu",onX);cv.removeEventListener("touchstart",tS);cv.removeEventListener("touchmove",tM);cv.removeEventListener("touchend",tE);ren.dispose();};
   },[layout,hlIds,photoTex,photoUrls]);
 
-  useEffect(function(){
-    if(hlIds.size===1&&layout&&ctrl.current&&upCamRef.current){
-      var nd=layout.nodes.find(function(n){return n.id===Array.from(hlIds)[0];});
-      if(nd){
-        ctrl.current.tx=nd.x;ctrl.current.tz=nd.z;ctrl.current.ty=2;
-        ctrl.current.radius=18;ctrl.current.phi=0.15;ctrl.current.theta=Math.PI/2;
-        upCamRef.current();
-      }
-    }
-  },[hlIds,layout]);
+  // hlIds only used for visual highlight, camera moved directly from search onMouseDown
 
   var stats=layout?{p:layout.nodes.length,g:layout.maxGeneration+1}:null;
   var PS={background:C.panel+"e8",borderRadius:10,border:"1px solid "+C.border,backdropFilter:"blur(10px)"};
