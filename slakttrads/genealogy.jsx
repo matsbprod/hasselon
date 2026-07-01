@@ -1773,7 +1773,7 @@ function PlacesEditor({individuals,families,extraLocs,setExtraLocs,selectedId,bu
   var _s=useState;
   var s1=_s(selectedId||pids[0]||null),editId=s1[0],setEditId=s1[1];
   var s2=_s(null),editIdx=s2[0],setEditIdx=s2[1];
-  var s3=_s(""),search=s3[0],setSearch=s3[1];
+  var s3=_s(""),search=s3[0],setSearch=s3[1];var sSD=_s([]),searchDropdown=sSD[0],setSearchDropdown=sSD[1];var searchDebRef=useRef(null);
   var mapRef=useRef(null);
   var clickModeRef=useRef(false);
   var s4=_s(false),clickMode=s4[0],setClickMode=s4[1];
@@ -2400,7 +2400,16 @@ function GenealogyApp(){
     return function(){cancelAnimationFrame(frameRef.current);window.removeEventListener("resize",onR);cv.removeEventListener("mousedown",onD);cv.removeEventListener("mouseup",onU);cv.removeEventListener("mousemove",onM);cv.removeEventListener("wheel",onW);cv.removeEventListener("click",onC);cv.removeEventListener("contextmenu",onX);cv.removeEventListener("touchstart",tS);cv.removeEventListener("touchmove",tM);cv.removeEventListener("touchend",tE);ren.dispose();};
   },[layout,hlIds,photoTex,photoUrls]);
 
-  useEffect(function(){if(hlIds.size===1&&layout){var nd=layout.nodes.find(function(n){return n.id===Array.from(hlIds)[0];});if(nd){ctrl.current.tx=nd.x;ctrl.current.tz=nd.z;ctrl.current.radius=25;}}},[hlIds,layout]);
+  useEffect(function(){
+    if(hlIds.size===1&&layout&&ctrl.current&&upCamRef.current){
+      var nd=layout.nodes.find(function(n){return n.id===Array.from(hlIds)[0];});
+      if(nd){
+        ctrl.current.tx=nd.x;ctrl.current.tz=nd.z;ctrl.current.ty=2;
+        ctrl.current.radius=18;ctrl.current.phi=0.15;ctrl.current.theta=Math.PI/2;
+        upCamRef.current();
+      }
+    }
+  },[hlIds,layout]);
 
   var stats=layout?{p:layout.nodes.length,g:layout.maxGeneration+1}:null;
   var PS={background:C.panel+"e8",borderRadius:10,border:"1px solid "+C.border,backdropFilter:"blur(10px)"};
@@ -2495,50 +2504,59 @@ function GenealogyApp(){
           <div style={{pointerEvents:"all",flex:1,maxWidth:280,padding:"4px 10px",position:"relative",zIndex:300}}>
             <div style={{display:"flex",alignItems:"center",gap:6,background:"rgba(255,255,255,0.06)",borderRadius:6,padding:"3px 8px"}}>
               <span style={{fontSize:11,opacity:0.5}}>&#x1F50D;</span>
-              <input type="text" placeholder="Sök person..." value={search} onChange={function(e){setSearch(e.target.value);}}
+              <input type="text" placeholder="Sök person..." value={search} onChange={function(e){
+                var q=e.target.value;setSearch(q);
+                if(searchDebRef.current)clearTimeout(searchDebRef.current);
+                if(!q.trim()){setSearchDropdown([]);return;}
+                searchDebRef.current=setTimeout(function(){
+                  if(!parsedData) return;
+                  var ql=q.toLowerCase();
+                  var results=[];
+                  var inds=parsedData.individuals;
+                  for(var id in inds){
+                    var ind2=inds[id];
+                    if(!ind2.name&&!ind2.givenName) continue;
+                    var nm=(ind2.name||"").toLowerCase();
+                    var gn=(ind2.givenName||"").toLowerCase();
+                    var sn=(ind2.surname||"").toLowerCase();
+                    if(nm.indexOf(ql)>=0||gn.indexOf(ql)>=0||sn.indexOf(ql)>=0){
+                      results.push({id:id,ind:ind2});
+                      if(results.length>=15) break;
+                    }
+                  }
+                  setSearchDropdown(results);
+                },200);
+              }}
                 style={{width:"100%",background:"transparent",border:"none",outline:"none",color:C.text,fontSize:12,fontFamily:"inherit"}}/>
-              {search&&<button onClick={function(){setSearch("");setHlIds(new Set());}} style={{background:"none",border:"none",color:C.dim,cursor:"pointer",fontSize:13,padding:0}}>&#x2715;</button>}
+              {search&&<button onClick={function(){setSearch("");setHlIds(new Set());setSearchDropdown([]);}} style={{background:"none",border:"none",color:C.dim,cursor:"pointer",fontSize:13,padding:0}}>&#x2715;</button>}
             </div>
-            {search.trim().length>0&&layout&&(function(){
-              var q=search.toLowerCase();
-              var hits=layout.nodes.filter(function(n){
-                if(!n.name) return false;
-                var nm=n.name.toLowerCase();
-                // Match on full name or given name alone
-                if(nm.indexOf(q)>=0) return true;
-                if(n.givenName&&n.givenName.toLowerCase().indexOf(q)>=0) return true;
-                if(n.surname&&n.surname.toLowerCase().indexOf(q)>=0) return true;
-                return false;
-              }).slice(0,12);
-              if(!hits.length) return null;
-              return(<div style={{position:"absolute",top:"100%",left:0,right:0,background:C.panel,border:"1px solid "+C.border,borderRadius:8,zIndex:200,maxHeight:280,overflowY:"auto",boxShadow:"0 8px 24px rgba(0,0,0,0.5)",marginTop:4}}>
-                {hits.map(function(n){
-                  var ind=parsedData&&parsedData.individuals&&parsedData.individuals[n.id];
-                  var birth=ind&&ind.birthDate?ind.birthDate:"";
-                  var death=ind&&ind.deathDate?ind.deathDate:"";
-                  return(<div key={n.id} style={{padding:"8px 12px",cursor:"pointer",borderBottom:"1px solid "+C.border+"44",display:"flex",alignItems:"center",gap:8}}
-                    onMouseDown={function(e){e.preventDefault();
-                      setSearch("");setHlIds(new Set());
-                      var node=layout.nodes.find(function(nd){return nd.id===n.id;});
-                      if(node){
-                        setSel(node);
-                        setInspPerson(ind?Object.assign({},ind,{id:n.id,generation:node.generation}):null);
-                        // Highlight triggers camera center in 3D view
-                        setHlIds(new Set([n.id]));
-                        setTimeout(function(){setHlIds(new Set());},1500);
-                      }
-                    }}>
-                    {photoUrls[n.id]&&photoUrls[n.id][0]
-                      ?<img src={photoUrls[n.id][0].url} style={{width:28,height:28,borderRadius:4,objectFit:"cover",flexShrink:0}}/>
-                      :<div style={{width:28,height:28,borderRadius:4,background:"rgba(255,255,255,0.06)",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:C.dim}}>{n.sex==="F"?"&#9792;":"&#9794;"}</div>}
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:12,fontWeight:500,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{n.name}</div>
-                      {(birth||death)&&<div style={{fontSize:10,color:C.dim}}>{birth}{death?" – "+death:""}</div>}
-                    </div>
-                  </div>);
-                })}
-              </div>);
-            })()}
+            {searchDropdown.length>0&&(<div style={{position:"absolute",top:"100%",left:0,right:0,background:C.panel,border:"1px solid "+C.border,borderRadius:8,zIndex:200,maxHeight:300,overflowY:"auto",boxShadow:"0 8px 24px rgba(0,0,0,0.5)",marginTop:4}}>
+              {searchDropdown.map(function(hit){
+                var hid=hit.id,hind=hit.ind;
+                var birth=hind.birthDate||"",death=hind.deathDate||"";
+                return(<div key={hid} style={{padding:"8px 12px",cursor:"pointer",borderBottom:"1px solid "+C.border+"44",display:"flex",alignItems:"center",gap:8}}
+                  onMouseDown={function(e){e.preventDefault();
+                    setSearch("");setSearchDropdown([]);
+                    var node=layout&&layout.nodes.find(function(nd){return nd.id===hid;});
+                    setSel(node||null);
+                    setInspPerson(Object.assign({},hind,{id:hid,generation:node?node.generation:0}));
+                    if(node&&ctrl.current&&upCamRef.current){
+                      var cc2=ctrl.current;
+                      cc2.tx=node.x;cc2.tz=node.z;cc2.ty=2;
+                      cc2.radius=18;cc2.phi=0.15;cc2.theta=Math.PI/2;
+                      upCamRef.current();
+                    }
+                  }}>
+                  {photoUrls[hid]&&photoUrls[hid][0]
+                    ?<img src={photoUrls[hid][0].url} style={{width:28,height:28,borderRadius:4,objectFit:"cover",flexShrink:0}}/>
+                    :<div style={{width:28,height:28,borderRadius:4,background:"rgba(255,255,255,0.06)",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:C.dim}}>{hind.sex==="F"?"♀":"♂"}</div>}
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:12,fontWeight:500,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{hind.name||hind.givenName||"?"}</div>
+                    {(birth||death)&&<div style={{fontSize:10,color:C.dim}}>{birth}{death?" – "+death:""}</div>}
+                  </div>
+                </div>);
+              })}
+            </div>)}
           </div>
           {stats&&<div style={{...PS,pointerEvents:"all",padding:"5px 10px",fontSize:10}}><span style={{color:C.dim}}>People </span><strong>{stats.p}</strong><span style={{color:C.dim,marginLeft:6}}>Gen </span><strong>{stats.g}</strong>{photoCount>0&&<span style={{color:"#66d9a0",marginLeft:6}}>{photoCount} photos</span>}</div>}
           <label style={{...PS,pointerEvents:"all",padding:"5px 10px",cursor:"pointer",fontSize:10,color:C.accent,fontWeight:600}}>+<input type="file" accept=".ged,.gedcom" onChange={handleFile} style={{display:"none"}}/></label>
