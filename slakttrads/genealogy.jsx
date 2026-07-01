@@ -2499,9 +2499,17 @@ function GenealogyApp(){
                 style={{width:"100%",background:"transparent",border:"none",outline:"none",color:C.text,fontSize:12,fontFamily:"inherit"}}/>
               {search&&<button onClick={function(){setSearch("");setHlIds(new Set());}} style={{background:"none",border:"none",color:C.dim,cursor:"pointer",fontSize:13,padding:0}}>&#x2715;</button>}
             </div>
-            {search.trim().length>1&&layout&&(function(){
+            {search.trim().length>0&&layout&&(function(){
               var q=search.toLowerCase();
-              var hits=layout.nodes.filter(function(n){return n.name&&n.name.toLowerCase().indexOf(q)>=0;}).slice(0,12);
+              var hits=layout.nodes.filter(function(n){
+                if(!n.name) return false;
+                var nm=n.name.toLowerCase();
+                // Match on full name or given name alone
+                if(nm.indexOf(q)>=0) return true;
+                if(n.givenName&&n.givenName.toLowerCase().indexOf(q)>=0) return true;
+                if(n.surname&&n.surname.toLowerCase().indexOf(q)>=0) return true;
+                return false;
+              }).slice(0,12);
               if(!hits.length) return null;
               return(<div style={{position:"absolute",top:"100%",left:0,right:0,background:C.panel,border:"1px solid "+C.border,borderRadius:8,zIndex:200,maxHeight:280,overflowY:"auto",boxShadow:"0 8px 24px rgba(0,0,0,0.5)",marginTop:4}}>
                 {hits.map(function(n){
@@ -2512,7 +2520,13 @@ function GenealogyApp(){
                     onMouseDown={function(e){e.preventDefault();
                       setSearch("");setHlIds(new Set());
                       var node=layout.nodes.find(function(nd){return nd.id===n.id;});
-                      if(node){setSel(node);setInspPerson(ind?Object.assign({},ind,{id:n.id,generation:node.generation}):null);}
+                      if(node){
+                        setSel(node);
+                        setInspPerson(ind?Object.assign({},ind,{id:n.id,generation:node.generation}):null);
+                        // Highlight triggers camera center in 3D view
+                        setHlIds(new Set([n.id]));
+                        setTimeout(function(){setHlIds(new Set());},1500);
+                      }
                     }}>
                     {photoUrls[n.id]&&photoUrls[n.id][0]
                       ?<img src={photoUrls[n.id][0].url} style={{width:28,height:28,borderRadius:4,objectFit:"cover",flexShrink:0}}/>
