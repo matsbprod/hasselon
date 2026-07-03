@@ -2064,7 +2064,7 @@ function PlacesEditor({individuals,families,extraLocs,setExtraLocs,selectedId,bu
 
 
 function GenealogyApp(){
-  var _s=useState;var s1=_s(null),layout=s1[0],setLayout=s1[1];var s2=_s(null),sel=s2[0],setSel=s2[1];var sInsp=_s(null),inspPerson=sInsp[0],setInspPerson=sInsp[1];var sLB=_s(null),panelLightbox=sLB[0],setPanelLightbox=sLB[1];var s3=_s(""),search=s3[0],setSearch=s3[1];var sSD=_s([]),searchDropdown=sSD[0],setSearchDropdown=sSD[1];var searchDebRef=useRef(null);var s4=_s(new Set()),hlIds=s4[0],setHlIds=s4[1];var s5=_s(true),showUp=s5[0],setShowUp=s5[1];var s6=_s({}),photoTex=s6[0],setPhotoTex=s6[1];var s7=_s(true),isSample=s7[0],setIsSample=s7[1];var s8=_s(null),parsedData=s8[0],setParsedData=s8[1];var sGL=_s(false),gedcomLoading=sGL[0],setGedcomLoading=sGL[1];var sGE=_s(null),gedcomError=sGE[0],setGedcomError=sGE[1];var s9=_s(1970),sliderYear=s9[0],setSliderYear=s9[1];var s10=_s(false),isPlaying=s10[0],setIsPlaying=s10[1];var s11=_s(null),rangeStart=s11[0],setRangeStart=s11[1];var s12=_s(null),rangeEnd=s12[0],setRangeEnd=s12[1];
+  var _s=useState;var s1=_s(null),layout=s1[0],setLayout=s1[1];var s2=_s(null),sel=s2[0],setSel=s2[1];var sInsp=_s(null),inspPerson=sInsp[0],setInspPerson=sInsp[1];var sLB=_s(null),panelLightbox=sLB[0],setPanelLightbox=sLB[1];var lbDragRef=useRef({dragging:false,sx:0,sy:0,spx:0,spy:0});var s3=_s(""),search=s3[0],setSearch=s3[1];var sSD=_s([]),searchDropdown=sSD[0],setSearchDropdown=sSD[1];var searchDebRef=useRef(null);var s4=_s(new Set()),hlIds=s4[0],setHlIds=s4[1];var s5=_s(true),showUp=s5[0],setShowUp=s5[1];var s6=_s({}),photoTex=s6[0],setPhotoTex=s6[1];var s7=_s(true),isSample=s7[0],setIsSample=s7[1];var s8=_s(null),parsedData=s8[0],setParsedData=s8[1];var sGL=_s(false),gedcomLoading=sGL[0],setGedcomLoading=sGL[1];var sGE=_s(null),gedcomError=sGE[0],setGedcomError=sGE[1];var s9=_s(1970),sliderYear=s9[0],setSliderYear=s9[1];var s10=_s(false),isPlaying=s10[0],setIsPlaying=s10[1];var s11=_s(null),rangeStart=s11[0],setRangeStart=s11[1];var s12=_s(null),rangeEnd=s12[0],setRangeEnd=s12[1];
   var s14=_s(function(){try{var r=localStorage.getItem('slakttrads_photos');return r?JSON.parse(r):{};}catch(e){return {};}}()),photoUrls=s14[0],setPhotoUrls=s14[1];
   var sPlU=useState(function(){try{var r=localStorage.getItem('slakttrads_place_photos');return r?JSON.parse(r):{};}catch(e){return {};}}()),placeUrls=sPlU[0],setPlaceUrls=sPlU[1];
   var s15=_s(0),photoCount=s15[0],setPhotoCount=s15[1];
@@ -2715,7 +2715,6 @@ function GenealogyApp(){
       var lbZoom=panelLightbox.zoom||1;
       var lbX=panelLightbox.panX||0;
       var lbY=panelLightbox.panY||0;
-      var lbDragging=false,lbSX=0,lbSY=0,lbSPX=0,lbSPY=0;
       var ph=panelLightbox.photos[panelLightbox.idx];
       function zoom(delta,cx,cy){
         var next=Math.max(1,Math.min(8,lbZoom*Math.pow(1.15,delta)));
@@ -2740,10 +2739,11 @@ function GenealogyApp(){
         {panelLightbox.idx>0&&<button onClick={function(e){e.stopPropagation();setPanelLightbox(function(lb){return Object.assign({},lb,{idx:lb.idx-1,zoom:1,panX:0,panY:0});});}} style={{position:"fixed",left:16,top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",fontSize:32,width:48,height:48,borderRadius:8,cursor:"pointer",zIndex:9001}}>&#8249;</button>}
         {panelLightbox.idx<panelLightbox.photos.length-1&&<button onClick={function(e){e.stopPropagation();setPanelLightbox(function(lb){return Object.assign({},lb,{idx:lb.idx+1,zoom:1,panX:0,panY:0});});}} style={{position:"fixed",right:16,top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",fontSize:32,width:48,height:48,borderRadius:8,cursor:"pointer",zIndex:9001}}>&#8250;</button>}
         {/* Image with zoom+pan */}
-        <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",width:"100%",overflow:"hidden",cursor:lbZoom>1?"grab":"default"}}
-          onMouseDown={function(e){if(lbZoom<=1)return;e.stopPropagation();lbDragging=true;lbSX=e.clientX;lbSY=e.clientY;lbSPX=panelLightbox.panX||0;lbSPY=panelLightbox.panY||0;}}
-          onMouseMove={function(e){if(!lbDragging)return;setPanelLightbox(function(lb){return Object.assign({},lb,{panX:lbSPX+(e.clientX-lbSX),panY:lbSPY+(e.clientY-lbSY)});});}}
-          onMouseUp={function(){lbDragging=false;}}
+        <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",width:"100%",overflow:"hidden",cursor:lbZoom>1?"crosshair":"default"}}
+          onMouseDown={function(e){if(lbZoom<=1)return;e.stopPropagation();e.preventDefault();var d=lbDragRef.current;d.dragging=true;d.sx=e.clientX;d.sy=e.clientY;d.spx=panelLightbox.panX||0;d.spy=panelLightbox.panY||0;}}
+          onMouseMove={function(e){var d=lbDragRef.current;if(!d.dragging)return;setPanelLightbox(function(lb){return Object.assign({},lb,{panX:d.spx+(e.clientX-d.sx),panY:d.spy+(e.clientY-d.sy)});});}}
+          onMouseUp={function(){lbDragRef.current.dragging=false;}}
+          onMouseLeave={function(){lbDragRef.current.dragging=false;}}
           onClick={function(e){e.stopPropagation();}}>
           <img src={ph.url}
             style={{maxWidth:"88vw",maxHeight:"75vh",objectFit:"contain",borderRadius:lbZoom<=1?10:0,border:lbZoom<=1?"1px solid #444":"none",
