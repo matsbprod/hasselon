@@ -2711,19 +2711,55 @@ function GenealogyApp(){
           </div>
         </div>
       </div>)}
-    {panelLightbox&&(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.88)",zIndex:9000,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}
-      onClick={function(){setPanelLightbox(null);}}>
-      <button onClick={function(){setPanelLightbox(null);}} style={{position:"fixed",top:16,right:16,background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",fontSize:20,width:38,height:38,borderRadius:8,cursor:"pointer",zIndex:9001}}>&#x2715;</button>
-      {panelLightbox.idx>0&&<button onClick={function(e){e.stopPropagation();setPanelLightbox(function(lb){return{photos:lb.photos,idx:lb.idx-1};});}} style={{position:"fixed",left:16,top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",fontSize:32,width:48,height:48,borderRadius:8,cursor:"pointer",zIndex:9001}}>&#8249;</button>}
-      {panelLightbox.idx<panelLightbox.photos.length-1&&<button onClick={function(e){e.stopPropagation();setPanelLightbox(function(lb){return{photos:lb.photos,idx:lb.idx+1};});}} style={{position:"fixed",right:16,top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",fontSize:32,width:48,height:48,borderRadius:8,cursor:"pointer",zIndex:9001}}>&#8250;</button>}
-      <img src={panelLightbox.photos[panelLightbox.idx].url} style={{maxWidth:"88vw",maxHeight:"78vh",objectFit:"contain",borderRadius:10,border:"1px solid #444"}} onClick={function(e){e.stopPropagation();}}/>
-      <div style={{marginTop:12,textAlign:"center"}} onClick={function(e){e.stopPropagation();}}>
-        <div style={{color:"#fff",fontSize:14,fontWeight:600}}>{panelLightbox.photos[panelLightbox.idx].label||"Foto "+(panelLightbox.idx+1)}</div>
-        {panelLightbox.photos[panelLightbox.idx].year&&<div style={{color:"#8899aa",fontSize:12,marginTop:2}}>{panelLightbox.photos[panelLightbox.idx].year}</div>}
-        {panelLightbox.photos[panelLightbox.idx].source&&<div style={{color:"#8899aa",fontSize:11,marginTop:1}}>Källa: {panelLightbox.photos[panelLightbox.idx].source}</div>}
-        <div style={{color:"#666",fontSize:11,marginTop:3}}>{panelLightbox.idx+1} / {panelLightbox.photos.length}</div>
-      </div>
-    </div>)}
+    {panelLightbox&&(function(){
+      var lbZoom=panelLightbox.zoom||1;
+      var lbX=panelLightbox.panX||0;
+      var lbY=panelLightbox.panY||0;
+      var lbDragging=false,lbSX=0,lbSY=0,lbSPX=0,lbSPY=0;
+      var ph=panelLightbox.photos[panelLightbox.idx];
+      function zoom(delta,cx,cy){
+        var next=Math.max(1,Math.min(8,lbZoom*Math.pow(1.15,delta)));
+        // Zoom towards cursor point
+        var scale=next/lbZoom;
+        setPanelLightbox(function(lb){return Object.assign({},lb,{zoom:next,panX:(lb.panX||0)*scale,panY:(lb.panY||0)*scale});});
+      }
+      return(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.92)",zIndex:9000,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",overflow:"hidden"}}
+        onClick={function(){if(lbZoom<=1)setPanelLightbox(null);}}
+        onWheel={function(e){e.preventDefault();zoom(e.deltaY<0?1:-1,e.clientX,e.clientY);}}
+        onDoubleClick={function(e){e.stopPropagation();if(lbZoom>1){setPanelLightbox(function(lb){return Object.assign({},lb,{zoom:1,panX:0,panY:0});});}else{zoom(3,e.clientX,e.clientY);}}}
+      >
+        {/* Close */}
+        <button onClick={function(e){e.stopPropagation();setPanelLightbox(null);}} style={{position:"fixed",top:16,right:16,background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",fontSize:20,width:38,height:38,borderRadius:8,cursor:"pointer",zIndex:9001}}>&#x2715;</button>
+        {/* Zoom buttons */}
+        <div style={{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",display:"flex",gap:6,zIndex:9001}}>
+          <button onClick={function(e){e.stopPropagation();zoom(3);}} style={{background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",fontSize:16,width:34,height:34,borderRadius:7,cursor:"pointer"}}>+</button>
+          <button onClick={function(e){e.stopPropagation();setPanelLightbox(function(lb){return Object.assign({},lb,{zoom:1,panX:0,panY:0});});}} style={{background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",fontSize:10,width:44,height:34,borderRadius:7,cursor:"pointer"}}>{Math.round(lbZoom*100)}%</button>
+          <button onClick={function(e){e.stopPropagation();zoom(-3);}} style={{background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",fontSize:16,width:34,height:34,borderRadius:7,cursor:"pointer"}}>−</button>
+        </div>
+        {/* Prev/Next */}
+        {panelLightbox.idx>0&&<button onClick={function(e){e.stopPropagation();setPanelLightbox(function(lb){return Object.assign({},lb,{idx:lb.idx-1,zoom:1,panX:0,panY:0});});}} style={{position:"fixed",left:16,top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",fontSize:32,width:48,height:48,borderRadius:8,cursor:"pointer",zIndex:9001}}>&#8249;</button>}
+        {panelLightbox.idx<panelLightbox.photos.length-1&&<button onClick={function(e){e.stopPropagation();setPanelLightbox(function(lb){return Object.assign({},lb,{idx:lb.idx+1,zoom:1,panX:0,panY:0});});}} style={{position:"fixed",right:16,top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",fontSize:32,width:48,height:48,borderRadius:8,cursor:"pointer",zIndex:9001}}>&#8250;</button>}
+        {/* Image with zoom+pan */}
+        <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",width:"100%",overflow:"hidden",cursor:lbZoom>1?"grab":"default"}}
+          onMouseDown={function(e){if(lbZoom<=1)return;e.stopPropagation();lbDragging=true;lbSX=e.clientX;lbSY=e.clientY;lbSPX=panelLightbox.panX||0;lbSPY=panelLightbox.panY||0;}}
+          onMouseMove={function(e){if(!lbDragging)return;setPanelLightbox(function(lb){return Object.assign({},lb,{panX:lbSPX+(e.clientX-lbSX),panY:lbSPY+(e.clientY-lbSY)});});}}
+          onMouseUp={function(){lbDragging=false;}}
+          onClick={function(e){e.stopPropagation();}}>
+          <img src={ph.url}
+            style={{maxWidth:"88vw",maxHeight:"75vh",objectFit:"contain",borderRadius:lbZoom<=1?10:0,border:lbZoom<=1?"1px solid #444":"none",
+              transform:"scale("+lbZoom+") translate("+lbX/lbZoom+"px,"+lbY/lbZoom+"px)",
+              transformOrigin:"center",transition:lbDragging?"none":"transform 0.1s",
+              userSelect:"none",pointerEvents:"none"}}/>
+        </div>
+        {/* Caption */}
+        <div style={{padding:"8px 16px 16px",textAlign:"center"}} onClick={function(e){e.stopPropagation();}}>
+          <div style={{color:"#fff",fontSize:14,fontWeight:600}}>{ph.label||"Foto "+(panelLightbox.idx+1)}</div>
+          {ph.year&&<div style={{color:"#8899aa",fontSize:12,marginTop:2}}>{ph.year}</div>}
+          {ph.source&&<div style={{color:"#8899aa",fontSize:11,marginTop:1}}>Källa: {ph.source}</div>}
+          <div style={{color:"#555",fontSize:11,marginTop:3}}>{panelLightbox.idx+1} / {panelLightbox.photos.length} · Scrolla eller +/− för zoom · Dubbelklicka för att zooma in/ut</div>
+        </div>
+      </div>);
+    })()}
     </div>
   );
 }
