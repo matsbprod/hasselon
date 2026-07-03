@@ -1170,7 +1170,13 @@ function MapView(props) {
         onMouseLeave={function(){overTooltipRef.current=false;setHoverPerson(null);}}>
         {hoverPerson.photo
           ?<img src={hoverPerson.photo.url} style={{width:"100%",height:220,objectFit:"cover",display:"block",cursor:"pointer"}}
-              onClick={function(){if(onPhotoClick&&hphotos.length)onPhotoClick(hphotos,Math.max(0,hphotos.indexOf(hoverPerson.photo)));}}
+              onClick={function(){
+                var photos2=hoverPerson.placePhotos&&hoverPerson.placePhotos.length>0?hoverPerson.placePhotos:hphotos;
+                if(onPhotoClick&&photos2.length){
+                  var idx2=photos2.indexOf(hoverPerson.photo);
+                  onPhotoClick(photos2,Math.max(0,idx2));
+                }
+              }}
               onError={function(e){e.target.style.display="none";}}/>
           :<div style={{height:40,display:"flex",alignItems:"center",justifyContent:"center",color:"#8b949e",fontSize:18}}>📷</div>}
         <div style={{padding:"7px 9px 6px"}}>
@@ -1348,7 +1354,7 @@ function PhotoManager(props){
     var type="other";
     if(dl.indexOf("brollop")>=0||dl.indexOf("wedding")>=0||dl.indexOf("vigsel")>=0) type="wedding";
     else if(dl.indexOf("plats")>=0||dl.indexOf("hus")>=0||dl.indexOf("gard")>=0||dl.indexOf("torp")>=0||dl.indexOf("gatan")>=0||dl.indexOf("vagen")>=0) type="place";
-    else if(dl.indexOf("kyrkbok")>=0||dl.indexOf("husforh")>=0||dl.indexOf("fod")>=0||dl.indexOf("dod")>=0||dl.indexOf("document")>=0) type="document";
+    else if(dl.indexOf("kyrkbok")>=0||dl.indexOf("husforh")>=0||dl.indexOf("fodd")>=0||dl.indexOf("dod")>=0||dl.indexOf("document")>=0) type="document";
     else if(dl.indexOf("grupp")>=0||dl.indexOf("group")>=0||dl.indexOf("familj")>=0) type="group";
     else type="portrait";
     var yearMatch=base.match(/_(1[0-9]{3}|2[0-9]{3})/);
@@ -2058,8 +2064,7 @@ function PlacesEditor({individuals,families,extraLocs,setExtraLocs,selectedId,bu
 
 
 function GenealogyApp(){
-  var _s=useState;var s1=_s(null),layout=s1[0],setLayout=s1[1];var s2=_s(null),sel=s2[0],setSel=s2[1];var sInsp=_s(null),inspPerson=sInsp[0],setInspPerson=sInsp[1];var sLB=_s(null),panelLightbox=sLB[0],setPanelLightbox=sLB[1];var s3=_s(""),search=s3[0],setSearch=s3[1];var s4=_s(new Set()),hlIds=s4[0],setHlIds=s4[1];var s5=_s(true),showUp=s5[0],setShowUp=s5[1];var s6=_s({}),photoTex=s6[0],setPhotoTex=s6[1];var s7=_s(true),isSample=s7[0],setIsSample=s7[1];var IDA2_GED="0 HEAD\n1 SOUR MinSl\u00e4kt\n2 VERS V4.9\n2 NAME MinSl\u00e4kt\n1 DEST MinSl\u00e4kt\n1 DATE 19 FEB 2026\n1 SUBM @SUBM1@\n1 FILE C:\\Users\\Admin\\Desktop\\Ida2.ged\n1 GEDC\n2 VERS 5.5\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n1 LANG Swedish\n0 @I70@ INDI\n1 NAME Ulla* Christina /Abrahamsson f Haster/\n1 SEX F\n1 BIRT\n2 DATE 16 MAR 1944\n2 PLAC Oskar Fredrik (O)\n1 FAMS @F1086@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I83@ INDI\n1 NAME Ester Maria /Abrahamsson f Jonsson/\n1 SEX F\n1 BIRT\n2 DATE 4 NOV 1911\n2 PLAC Myckleby (O)\n1 DEAT\n2 DATE 27 JUL 1989\n2 PLAC Masrhugget (O)\n1 FAMS @F673@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I103@ INDI\n1 NAME Ida Amalia /Abrahamsson f Olsdotter/\n1 SEX F\n1 BIRT\n2 DATE 20 APR 1873\n2 PLAC Torp (O)\n1 DEAT\n2 DATE 31 MAY 1941\n2 PLAC Torp (O)\n1 FAMS @F161@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I131@ INDI\n1 NAME Alexandra Yasmine S Ran /Abrahamsson/\n1 SEX F\n1 BIRT\n2 DATE 2 JUN 1986\n2 PLAC Sydkorea\n1 FAMC @F1086@\n1 CHAN\n2 DATE 27 NOV 2022\n0 @I157@ INDI\n1 NAME Bernt* \u00c5ke Eilert /Abrahamsson/\n1 SEX M\n1 BIRT\n2 DATE 5 AUG 1947\n2 PLAC Karl Johan (O)\n1 DEAT\n2 DATE AUG 1998\n2 PLAC H\u00f6gsbo  (O)\n1 FAMS @F1086@\n1 FAMC @F673@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I184@ INDI\n1 NAME Fredrik Bernt Ho-Sher /Abrahamsson/\n1 SEX M\n1 BIRT\n2 DATE 2 FEB 1983\n2 PLAC Taiwan\n1 FAMC @F1086@\n1 CHAN\n2 DATE 27 NOV 2022\n0 @I194@ INDI\n1 NAME Gustav \u00c5ke /Abrahamsson/\n1 SEX M\n1 BIRT\n2 DATE 6 MAY 1909\n2 PLAC Torp (O)\n1 DEAT\n2 DATE 8 JAN 1985\n2 PLAC Masthugget (O)\n1 FAMS @F673@\n1 FAMC @F161@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I254@ INDI\n1 NAME Olof Amandus /Abrahamsson/\n1 SEX M\n1 BIRT\n2 DATE 9 OCT 1876\n2 PLAC Stala (O)\n1 DEAT\n2 DATE 22 DEC 1959\n2 PLAC Torp (O)\n1 FAMS @F161@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I263@ INDI\n1 NAME Roger /Abrahamsson/\n1 SEX M\n1 BIRT\n2 DATE 26 JAN 1912\n2 PLAC Torp (O)\n1 DEAT\n2 DATE 8 APR 1983\n2 PLAC Nyl\u00f6se (O)\n1 FAMC @F161@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I2158@ INDI\n1 NAME Ingrid Margareta /Blomberg f Abrahamsson/\n1 SEX F\n1 BIRT\n2 DATE 5 APR 1907\n2 PLAC Torp (O)\n1 DEAT\n2 DATE 24 APR 2000\n2 PLAC Lundby (O)\n1 FAMS @F672@\n1 FAMC @F161@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I2159@ INDI\n1 NAME Gerd Britt-Marie* /Blomberg f Karlsson/\n1 SEX F\n1 BIRT\n2 DATE 2 MAR 1939\n2 PLAC Lundby (O)\n1 FAMS @F1084@\n1 CHAN\n2 DATE 4 AUG 2016\n0 @I2160@ INDI\n1 NAME Karl Gustaf /Blomberg/\n1 SEX M\n1 BIRT\n2 DATE 5 MAY 1906\n2 PLAC Masthugget (O)\n1 DEAT\n2 DATE 16 APR 1998\n2 PLAC Lundby (O)\n1 FAMS @F672@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I2161@ INDI\n1 NAME Mats* G\u00f6ran /Blomberg/\n1 SEX M\n1 BIRT\n2 DATE 23 OCT 1967\n2 PLAC Kristinehamn (S)\n1 FAMC @F1084@\n1 CHAN\n2 DATE 4 AUG 2016\n0 @I2162@ INDI\n1 NAME Stig* Gustaf G\u00f6ran /Blomberg/\n1 SEX M\n1 BIRT\n2 DATE 4 FEB 1942\n2 PLAC Lundby (O)\n1 FAMS @F1084@\n1 FAMC @F672@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I2163@ INDI\n1 NAME Stig Peter* /Blomberg/\n1 SEX M\n1 BIRT\n2 DATE 26 JAN 1970\n2 PLAC Kristinehamn (S)\n1 FAMC @F1084@\n1 CHAN\n2 DATE 29 APR 2017\n0 @I3192@ INDI\n1 NAME Inger* Birgitta /Eriksson f St\u00e5larm/\n1 SEX F\n1 BIRT\n2 DATE 9 JUN 1943\n2 PLAC Lundby (O)\n1 FAMS @F1090@\n1 FAMC @F675@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I3231@ INDI\n1 NAME Lars* Erik /Eriksson/\n1 SEX M\n1 BIRT\n2 DATE 28 FEB 1938\n2 PLAC Nyk\u00f6ping V\u00e4stra (D)\n1 DEAT\n2 DATE 10 JAN 2005\n2 PLAC Tuve (O)\n1 FAMS @F1090@\n1 CHAN\n2 DATE 2 JUL 2016\n0 @I3490@ INDI\n1 NAME Gunvor Ing-Marie /Gemoll f Gustavsson/\n1 SEX F\n1 BIRT\n2 DATE 21 DEC 1950\n2 PLAC Masthugg (O)\n1 FAMS @F1746@\n1 FAMC @F1080@\n1 CHAN\n2 DATE 28 AUG 2016\n0 @I3491@ INDI\n1 NAME Christian* Peter Mattias /Gemoll/\n1 SEX M\n1 BIRT\n2 DATE 12 AUG 1976\n2 PLAC Masthugg (O)\n1 FAMC @F1746@\n1 CHAN\n2 DATE 21 FEB 2017\n0 @I3492@ INDI\n1 NAME Henrik* Peter Michael /Gemoll/\n1 SEX M\n1 BIRT\n2 DATE 21 FEB 1974\n2 PLAC Masthugg (O)\n1 FAMC @F1746@\n1 CHAN\n2 DATE 21 FEB 2017\n0 @I3493@ INDI\n1 NAME Mini Michael* Lars Roger /Gemoll/\n1 SEX M\n1 BIRT\n2 DATE 15 APR 1979\n2 PLAC Askim (O)\n1 FAMC @F1746@\n1 CHAN\n2 DATE 14 MAR 2021\n0 @I3494@ INDI\n1 NAME Renee Peter-Frank /Gemoll/\n1 SEX M\n1 BIRT\n2 DATE 3 AUG 1947\n1 FAMS @F1746@\n1 CHAN\n2 DATE 28 AUG 2016\n0 @I3577@ INDI\n1 NAME Bengt Gunnar* /Grann/\n1 SEX M\n1 BIRT\n2 DATE 27 AUG 1962\n2 PLAC Botkyrka (AB)\n1 FAMS @F3719@\n1 CHAN\n2 DATE 14 SEP 2022\n0 @I3756@ INDI\n1 NAME Anna Gunborg /Gustavsson f Abrahamsson/\n1 SEX F\n1 BIRT\n2 DATE 3 MAR 1903\n2 PLAC Torp (O)\n1 DEAT\n2 DATE 19 AUG 1948\n2 PLAC Masthugget (O)\n1 FAMS @F670@\n1 FAMC @F161@\n1 CHAN\n2 DATE 28 AUG 2016\n0 @I3772@ INDI\n1 NAME Dagmar Viola /Gustavsson f Johansson/\n1 SEX F\n1 BIRT\n2 DATE 27 SEP 1927\n2 PLAC Masthugg (O)\n1 DEAT\n2 DATE 23 FEB 1995\n2 PLAC Torp (O)\n1 FAMS @F1080@\n1 CHAN\n2 DATE 28 AUG 2016\n0 @I3799@ INDI\n1 NAME Erik Julius /Gustavsson/\n1 SEX M\n1 BIRT\n2 DATE 6 MAR 1894\n2 PLAC L\u00e5ngelanda (O)\n1 DEAT\n2 DATE 6 AUG 1971\n2 PLAC Johanneberg (O)\n1 FAMS @F670@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I3839@ INDI\n1 NAME Roger* Vilgot /Gustavsson/\n1 SEX M\n1 BIRT\n2 DATE 20 NOV 1926\n2 PLAC Oskar Fredrik (O)\n1 DEAT\n2 DATE 2 JUL 2015\n2 PLAC R\u00f6ra (O) Hen\u00e5n\n1 FAMS @F1080@\n1 FAMC @F670@\n1 CHAN\n2 DATE 20 FEB 2019\n0 @I4314@ INDI\n1 NAME Richard P /Henry/\n1 SEX M\n1 BIRT\n2 DATE 1967\n2 PLAC USA\n1 FAMS @F1749@\n1 CHAN\n2 DATE 29 DEC 2016\n0 @I4409@ INDI\n1 NAME Junita /Hilmersson f Fransson/\n1 SEX F\n1 BIRT\n2 DATE 26 APR 1962\n2 PLAC Alings\u00e5s (P)\n1 FAMS @F3339@\n1 CHAN\n2 DATE 2 MAR 2021\n0 @I4414@ INDI\n1 NAME Ann-Britt /Hilmersson f St\u00e5larm/\n1 SEX F\n1 BIRT\n2 DATE 14 NOV 1935\n2 PLAC Oskar Fredrik (O)\n1 FAMS @F1089@\n1 FAMC @F675@\n1 CHAN\n2 DATE 2 JUL 2016\n0 @I4421@ INDI\n1 NAME Dan Ingemar* /Hilmersson/\n1 SEX M\n1 BIRT\n2 DATE 5 APR 1961\n2 PLAC Biskopsg\u00e5rden (O)\n1 FAMS @F3339@\n1 FAMC @F1089@\n1 CHAN\n2 DATE 24 AUG 2016\n0 @I4422@ INDI\n1 NAME Dan Kristoffer /Hilmersson/\n1 SEX M\n1 BIRT\n2 DATE 4 APR 1991\n2 PLAC S\u00e4ve (O)\n1 FAMC @F3339@\n1 CHAN\n2 DATE 2 MAR 2021\n0 @I4432@ INDI\n1 NAME Junita Viktoria /Hilmersson/\n1 SEX F\n1 BIRT\n2 DATE 2 MAR 1993\n2 PLAC S\u00e4ve (O)\n1 FAMC @F3339@\n1 CHAN\n2 DATE 2 MAR 2021\n0 @I4433@ INDI\n1 NAME Karl G\u00f6sta* Ingemar /Hilmersson/\n1 SEX M\n1 BIRT\n2 DATE 12 JAN 1929\n2 PLAC F\u00e4rgelanda (P)\n1 DEAT\n2 DATE 5 JUL 2017\n2 PLAC S\u00e4ve (O)Gullringev\u00e4gen 15 D\n1 FAMS @F1089@\n1 CHAN\n2 DATE 20 OCT 2022\n0 @I4439@ INDI\n1 NAME Linda Terse /Hilmersson/\n1 SEX F\n1 BIRT\n2 DATE 1 JUN 1998\n2 PLAC S\u00e4ve (O)\n1 FAMC @F3340@\n1 CHAN\n2 DATE 2 MAR 2021\n0 @I4444@ INDI\n1 NAME Mats* Lennart /Hilmersson/\n1 SEX M\n1 BIRT\n2 DATE 21 AUG 1966\n2 PLAC S\u00e4ve (O)\n1 FAMS @F3340@\n1 FAMC @F1089@\n1 CHAN\n2 DATE 24 AUG 2016\n0 @I4786@ INDI\n1 NAME Eva* Gunilla /Iseteg f Gustavsson/\n1 SEX F\n1 BIRT\n2 DATE 5 OCT 1954\n2 PLAC Masthugg (O)\n1 FAMS @F1747@\n1 FAMS @F1748@\n1 FAMC @F1080@\n1 CHAN\n2 DATE 2 MAR 2021\n0 @I4787@ INDI\n1 NAME Tommy* Rickard /Iseteg f Johansson/\n1 SEX M\n1 BIRT\n2 DATE 29 MAR 1955\n2 PLAC K\u00e4lleryd (F)\n1 FAMS @F1748@\n1 CHAN\n2 DATE 2 MAR 2021\n0 @I4788@ INDI\n1 NAME Sofia* Caroline /Iseteg Johannesson/\n1 SEX F\n1 BIRT\n2 DATE 17 MAY 1982\n2 PLAC Torslanda (O)\n1 FAMC @F1747@\n1 CHAN\n2 DATE 2 MAR 2021\n0 @I4789@ INDI\n1 NAME Emelie* Linnea /Iseteg/\n1 SEX F\n1 BIRT\n2 DATE 28 SEP 1986\n2 PLAC Torslanda (O)\n1 FAMC @F1747@\n1 CHAN\n2 DATE 2 MAR 2021\n0 @I4849@ INDI\n1 NAME Stina Camilla* /Jacobsson f Karp/\n1 SEX F\n1 BIRT\n2 DATE 31 MAY 1966\n2 PLAC Oskar Fredrik (O)\n1 FAMS @F1753@\n1 FAMC @F1085@\n1 CHAN\n2 DATE 26 AUG 2016\n0 @I4856@ INDI\n1 NAME Klas J\u00f6rgen* /Jacobsson/\n1 SEX M\n1 BIRT\n2 DATE 15 JUL 1964\n2 PLAC Bor\u00e5s Caroli (P)\n1 FAMS @F1753@\n1 CHAN\n2 DATE 29 AUG 2016\n0 @I4901@ INDI\n1 NAME Astor Amandus /Jakobsson/\n1 SEX M\n1 BIRT\n2 DATE 15 JAN 1992\n2 PLAC Annedal (O)\n1 FAMC @F1753@\n1 CHAN\n2 DATE 2 MAR 2021\n0 @I4904@ INDI\n1 NAME Carl Wictor /Jakobsson/\n1 SEX M\n1 BIRT\n2 DATE 20 SEP 1989\n2 PLAC Annedal (O)\n1 FAMC @F1753@\n1 CHAN\n2 DATE 2 MAR 2021\n0 @I4924@ INDI\n1 NAME Stina Ellen /Jakobsson/\n1 SEX F\n1 BIRT\n2 DATE 1 NOV 1994\n2 PLAC Sl\u00e4p (N)\n1 FAMC @F1753@\n1 CHAN\n2 DATE 2 MAR 2021\n0 @I5064@ INDI\n1 NAME Mats* Oscar Urban /Johannesson/\n1 SEX M\n1 BIRT\n2 DATE 20 FEB 1948\n2 PLAC \u00d6cker\u00f6 (O)\n1 FAMS @F1747@\n1 CHAN\n2 DATE 28 AUG 2016\n0 @I5624@ INDI\n1 NAME Ingela Marie /Johansson/\n1 SEX F\n1 BIRT\n2 DATE 2 MAR 1967\n2 PLAC Biskopsg\u00e5rden (O)\n1 FAMS @F3340@\n1 CHAN\n2 DATE 2 MAR 2021\n0 @I6694@ INDI\n1 NAME Ingrid Stina* Birgitta /Karp f Blomberg/\n1 SEX F\n1 BIRT\n2 DATE 4 JAN 1945\n2 PLAC Lundby (O)\n1 FAMS @F1085@\n1 FAMC @F672@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I6695@ INDI\n1 NAME Sofia Christina Isabelle /Karp \u00c5kerstr\u00f6m/\n1 SEX F\n1 BIRT\n2 DATE 7 AUG 1993\n2 PLAC Masthugg (O)\n1 FAMC @F1752@\n1 CHAN\n2 DATE 4 JUL 2024\n0 @I6696@ INDI\n1 NAME Hans Mikael* /Karp/\n1 SEX M\n1 BIRT\n2 DATE 19 SEP 1964\n2 PLAC Lundby (O)\n1 FAMS @F1752@\n1 FAMC @F1085@\n1 CHAN\n2 DATE 24 AUG 2016\n0 @I6697@ INDI\n1 NAME Hans* Olof Lennart /Karp/\n1 SEX M\n1 BIRT\n2 DATE 26 JUL 1941\n2 PLAC Bor\u00e5s Caroli (P)\n1 FAMS @F1085@\n1 CHAN\n2 DATE 26 AUG 2016\n0 @I6992@ INDI\n1 NAME Maria Ingegerd /Larsson f Abrahamsson/\n1 SEX F\n1 BIRT\n2 DATE 26 JAN 1912\n2 PLAC Torp (O)\n1 DEAT\n2 DATE 21 APR 1980\n2 PLAC Torp (O)\n1 FAMS @F674@\n1 FAMC @F161@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I7045@ INDI\n1 NAME Majvor* Ingegerd /Larsson f Karlsson/\n1 SEX F\n1 BIRT\n2 DATE 15 NOV 1945\n2 PLAC Jonsereds (O)\n1 FAMS @F1087@\n1 CHAN\n2 DATE 30 AUG 2016\n0 @I7073@ INDI\n1 NAME Reidun* Elisabeth /Larsson f Sl\u00e4ttberg/\n1 SEX F\n1 BIRT\n2 DATE 18 MAY 1947\n2 PLAC Lundby (O)\n1 FAMS @F1088@\n1 CHAN\n2 DATE 23 AUG 2016\n0 @I7103@ INDI\n1 NAME Ann-Kristin /Larsson/\n1 SEX F\n1 BIRT\n2 DATE 15 MAY 1970\n2 PLAC Grebbestad (O)\n1 FAMC @F1087@\n1 CHAN\n2 DATE 30 AUG 2016\n0 @I7193@ INDI\n1 NAME Jon Terje* /Larsson/\n1 SEX M\n1 BIRT\n2 DATE 7 APR 1981\n2 PLAC Gbg Domkyrkof\u00f6rs (O)\n1 FAMC @F1088@\n1 CHAN\n2 DATE 23 AUG 2016\n0 @I7227@ INDI\n1 NAME Knut Holger /Larsson/\n1 SEX M\n1 BIRT\n2 DATE 31 MAR 1910\n2 PLAC Uddevalla (O)\n1 DEAT\n2 DATE 25 OCT 2008\n2 PLAC R\u00f6ra (O)\n1 FAMS @F674@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I7239@ INDI\n1 NAME Lars* Holger /Larsson/\n1 SEX M\n1 BIRT\n2 DATE 3 FEB 1943\n2 PLAC Uddevalla (O)\n1 FAMS @F1087@\n1 FAMC @F674@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I7271@ INDI\n1 NAME Olof* Gunnar /Larsson/\n1 SEX M\n1 BIRT\n2 DATE 3 FEB 1943\n2 PLAC Uddevalla (O)\n1 FAMS @F1088@\n1 FAMC @F674@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I7286@ INDI\n1 NAME Per* Torgild /Larsson/\n1 SEX M\n1 BIRT\n2 DATE 3 SEP 1984\n2 PLAC Gbg Domkyrkof\u00f6rs (O)\n1 FAMC @F1088@\n1 CHAN\n2 DATE 23 AUG 2016\n0 @I7298@ INDI\n1 NAME Sofia* Helena /Larsson/\n1 SEX F\n1 BIRT\n2 DATE 23 JUL 1976\n2 PLAC Grebbestad (O)\n1 FAMC @F1087@\n1 CHAN\n2 DATE 30 AUG 2016\n0 @I8400@ INDI\n1 NAME Elvy Ulla* Margret /Niste f Blomberg/\n1 SEX F\n1 BIRT\n2 DATE 7 NOV 1936\n2 PLAC Lundby (O)\n1 FAMS @F1083@\n1 FAMC @F672@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I8401@ INDI\n1 NAME Erik Oscar* /Niste f Gustafsson/\n1 SEX M\n1 BIRT\n2 DATE 22 FEB 1985\n2 PLAC Biskopsg\u00e5rden (O)\n1 FAMS @F3722@\n1 CHAN\n2 DATE 14 SEP 2022\n0 @I8402@ INDI\n1 NAME Robin* Andreas /Niste f Lundgren/\n1 SEX M\n1 BIRT\n2 DATE 15 OCT 1986\n2 PLAC Lerum (P)\n1 FAMS @F3721@\n1 CHAN\n2 DATE 14 SEP 2022\n0 @I8403@ INDI\n1 NAME Lena Birgitta* /Niste f Samuelsson/\n1 SEX F\n1 BIRT\n2 DATE 14 MAY 1964\n2 PLAC Lundby (O)\n1 FAMS @F1751@\n1 CHAN\n2 DATE 23 AUG 2016\n0 @I8404@ INDI\n1 NAME Ingrid Gunilla* /Niste Nordblom/\n1 SEX F\n1 BIRT\n2 DATE 9 SEP 1960\n2 PLAC \u00d6rgryte (O)\n1 FAMS @F1750@\n1 FAMC @F1083@\n1 CHAN\n2 DATE 14 SEP 2022\n0 @I8405@ INDI\n1 NAME Anna* Linn\u00e9a Birgitta /Niste/\n1 SEX F\n1 BIRT\n2 DATE 6 AUG 1987\n2 PLAC Lundby (O)\n1 FAMS @F3721@\n1 FAMC @F1751@\n1 CHAN\n2 DATE 14 SEP 2022\n0 @I8406@ INDI\n1 NAME Benjamin* Klas Robin /Niste/\n1 SEX M\n1 BIRT\n2 DATE 20 JUN 2018\n2 PLAC S\u00e4tila (P)\n1 FAMC @F3721@\n1 CHAN\n2 DATE 14 SEP 2022\n0 @I8407@ INDI\n1 NAME Charlie* Olle Robin /Niste/\n1 SEX M\n1 BIRT\n2 DATE 8 OCT 2021\n2 PLAC S\u00e4tila (P)\n1 FAMC @F3721@\n1 CHAN\n2 DATE 14 SEP 2022\n0 @I8408@ INDI\n1 NAME Eva* Margareta /Niste/\n1 SEX F\n1 BIRT\n2 DATE 20 DEC 1965\n2 PLAC Br\u00e4mareg\u00e5rden (O)\n1 FAMS @F3719@\n1 FAMC @F1083@\n1 CHAN\n2 DATE 14 SEP 2022\n0 @I8409@ INDI\n1 NAME Hugo* Klas Oscar /Niste/\n1 SEX M\n1 BIRT\n2 DATE 17 SEP 2005\n2 PLAC S\u00e4tila (P)\n1 FAMC @F3722@\n1 CHAN\n2 DATE 14 SEP 2022\n0 @I8410@ INDI\n1 NAME Jakob* Klas Gustav /Niste/\n1 SEX M\n1 BIRT\n2 DATE 13 APR 1999\n2 PLAC Tuve (O)\n1 FAMC @F1751@\n1 CHAN\n2 DATE 14 SEP 2022\n0 @I8411@ INDI\n1 NAME Jenny* Ingrid Birgitta /Niste/\n1 SEX F\n1 BIRT\n2 DATE 28 NOV 1988\n2 PLAC Tuve (O)\n1 FAMS @F3722@\n1 FAMC @F1751@\n1 CHAN\n2 DATE 14 SEP 2022\n0 @I8412@ INDI\n1 NAME Klas* Gunnar /Niste/\n1 SEX M\n1 BIRT\n2 DATE 3 AUG 1963\n2 PLAC Br\u00e4mareg\u00e5rden (O)\n1 FAMS @F1751@\n1 FAMC @F1083@\n1 CHAN\n2 DATE 14 SEP 2022\n0 @I8413@ INDI\n1 NAME Noah* Oscar Eric /Niste/\n1 SEX M\n1 BIRT\n2 DATE 17 DEC 2009\n2 PLAC S\u00e4tila (P)\n1 FAMC @F3722@\n1 CHAN\n2 DATE 14 SEP 2022\n0 @I8414@ INDI\n1 NAME Olle* Gunnar /Niste/\n1 SEX M\n1 BIRT\n2 DATE 23 MAY 1936\n2 PLAC Oskarshamn (H)\n1 FAMS @F1083@\n1 CHAN\n2 DATE 26 AUG 2016\n0 @I8433@ INDI\n1 NAME Elsa Kerstin Julia* /Nordblom/\n1 SEX F\n1 BIRT\n2 DATE 19 MAR 1992\n2 PLAC Skredsvik (O)\n1 FAMC @F1750@\n1 CHAN\n2 DATE 14 SEP 2022\n0 @I8434@ INDI\n1 NAME Ernst Erik Mikael* /Nordblom/\n1 SEX M\n1 BIRT\n2 DATE 22 SEP 1953\n2 PLAC G\u00e4llinge (N)\n1 FAMS @F1750@\n1 CHAN\n2 DATE 1 SEP 2016\n0 @I8435@ INDI\n1 NAME Ida* Gunilla Margareta /Nordblom/\n1 SEX F\n1 BIRT\n2 DATE 10 SEP 1985\n2 PLAC Backa (O)\n1 FAMS @F3720@\n1 FAMC @F1750@\n1 CHAN\n2 DATE 14 SEP 2022\n0 @I8436@ INDI\n1 NAME Nils Gustav* Mikael /Nordblom/\n1 SEX M\n1 BIRT\n2 DATE 18 MAR 1990\n2 PLAC Skredsvik (O)\n1 FAMC @F1750@\n1 CHAN\n2 DATE 14 SEP 2022\n0 @I8437@ INDI\n1 NAME Selma* Ida Margareta /Nordblom/\n1 SEX F\n1 BIRT\n2 DATE 16 JUL 2016\n2 PLAC J\u00f6nk\u00f6ping (F)\n1 CHR\n2 DATE 2 OCT 2016\n2 PLAC J\u00f6nk\u00f6ping Sofia (F)\n1 FAMC @F3720@\n1 CHAN\n2 DATE 14 SEP 2022\n0 @I8438@ INDI\n1 NAME Ulla Malin* Sofia /Nordblom/\n1 SEX F\n1 BIRT\n2 DATE 1 AUG 1987\n2 PLAC Skredsvik (O)\n1 FAMC @F1750@\n1 CHAN\n2 DATE 14 SEP 2022\n0 @I8744@ INDI\n1 NAME Karin /Olsson f Berg/\n1 SEX F\n1 BIRT\n2 DATE 13 MAY 1911\n1 DEAT\n2 PLAC USA ?\n1 FAMS @F671@\n1 CHAN\n2 DATE 16 JUL 2016\n0 @I8953@ INDI\n1 NAME Nancy /Olsson f/\n1 SEX F\n1 BIRT\n2 PLAC USA\n1 FAMS @F1081@\n1 CHAN\n2 DATE 15 JUL 2016\n0 @I9006@ INDI\n1 NAME Ann Lynn /Olsson/\n1 SEX F\n1 BIRT\n2 DATE 17 APR 1967\n2 PLAC USA\n1 FAMS @F1749@\n1 FAMC @F1081@\n1 CHAN\n2 DATE 15 JUL 2016\n0 @I9085@ INDI\n1 NAME Bob /Olsson/\n1 SEX M\n1 BIRT\n2 DATE 2 FEB 1936\n2 PLAC USA\n1 FAMS @F1081@\n1 FAMC @F671@\n1 CHAN\n2 DATE 15 JUL 2016\n0 @I9422@ INDI\n1 NAME Olof Arnold /Olsson/\n1 SEX M\n1 BIRT\n2 DATE 20 FEB 1905\n2 PLAC Torp (O)\n1 DEAT\n2 DATE 8 JAN 1989\n2 PLAC USA ?\n1 FAMS @F671@\n1 FAMC @F161@\n1 CHAN\n2 DATE 16 JUL 2016\n0 @I10733@ INDI\n1 NAME Lilly Karin Gustava /St\u00e5larm f Abrahamsson/\n1 SEX F\n1 BIRT\n2 DATE 20 MAR 1915\n2 PLAC Torp (O)\n1 DEAT\n2 DATE 9 OCT 1991\n2 PLAC Tuve (O)\n1 FAMS @F675@\n1 FAMC @F161@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I10734@ INDI\n1 NAME Inger* Elisabeth /St\u00e5larm f Hagrud/\n1 SEX F\n1 BIRT\n2 DATE 5 NOV 1943\n2 PLAC Karl Johan (O)\n1 DEAT\n2 DATE 26 SEP 2020\n2 PLAC Skallsj\u00f6 (P)\n1 FAMS @F1091@\n1 CHAN\n2 DATE 2 MAY 2021\n0 @I10735@ INDI\n1 NAME Sven Anders /St\u00e5larm f Petersson/\n1 SEX M\n1 BIRT\n2 DATE 8 FEB 1968\n2 PLAC Halmstads Martin Luther (N)\n1 FAMS @F3341@\n1 CHAN\n2 DATE 2 MAR 2021\n0 @I10736@ INDI\n1 NAME Johan* Lennart /St\u00e5larm/\n1 SEX M\n1 BIRT\n2 DATE 3 FEB 1972\n2 PLAC Skallsj\u00f6 (P)\n1 FAMC @F1091@\n1 CHAN\n2 DATE 24 AUG 2016\n0 @I10737@ INDI\n1 NAME Maria* Helena /St\u00e5larm/\n1 SEX F\n1 BIRT\n2 DATE 19 MAR 1969\n2 PLAC Biskopsg\u00e5rden (O)\n1 FAMS @F3341@\n1 FAMC @F1091@\n1 CHAN\n2 DATE 24 AUG 2016\n0 @I10738@ INDI\n1 NAME Rolf Oskar Vilhelm /St\u00e5larm/\n1 SEX M\n1 BIRT\n2 DATE 23 JUN 1910\n2 PLAC Kungsholm (AB) Stockholm\n1 DEAT\n2 DATE 18 DEC 1989\n2 PLAC Tuve (O)\n1 FAMS @F675@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I10739@ INDI\n1 NAME Rune Lennart* /St\u00e5larm/\n1 SEX M\n1 BIRT\n2 DATE 25 OCT 1944\n2 PLAC Lundby (O)\n1 FAMS @F1091@\n1 FAMC @F675@\n1 CHAN\n2 DATE 13 AUG 2016\n0 @I10740@ INDI\n1 NAME Wilma Linnea /St\u00e5larm/\n1 SEX F\n1 BIRT\n2 DATE 2 OCT 1999\n2 PLAC R\u00e4ng (M)\n1 FAMC @F3341@\n1 CHAN\n2 DATE 2 MAR 2021\n0 @I11418@ INDI\n1 NAME Linda /Warner f Olsson/\n1 SEX F\n1 BIRT\n2 DATE 14 JAN 1947\n2 PLAC USA\n1 FAMS @F1082@\n1 FAMC @F671@\n1 CHAN\n2 DATE 16 JUL 2016\n0 @I11419@ INDI\n1 NAME Catrin /Warner/\n1 SEX F\n1 BIRT\n2 DATE JUL 1982\n2 PLAC USA\n1 FAMC @F1082@\n1 CHAN\n2 DATE 16 JAN 2016\n0 @I11420@ INDI\n1 NAME J Craig /Warner/\n1 SEX M\n1 BIRT\n2 PLAC USA\n1 FAMS @F1082@\n1 CHAN\n2 DATE 21 AUG 2016\n0 @I11668@ INDI\n1 NAME Hans Robert Alexander* /\u00c5kerstr\u00f6m Karp/\n1 SEX M\n1 BIRT\n2 DATE 4 DEC 1988\n2 PLAC Masthugg (O)\n1 FAMC @F1752@\n1 CHAN\n2 DATE 21 FEB 2017\n0 @I11671@ INDI\n1 NAME Barbro Elisabeth* /\u00c5kerstr\u00f6m/\n1 SEX F\n1 BIRT\n2 DATE 17 MAR 1965\n2 PLAC Biskopsg\u00e5rden (O)\n1 FAMS @F1752@\n1 CHAN\n2 DATE 24 AUG 2016\n0 @F161@ FAM\n1 HUSB @I254@\n1 WIFE @I103@\n1 CHIL @I3756@\n1 CHIL @I9422@\n1 CHIL @I2158@\n1 CHIL @I194@\n1 CHIL @I6992@\n1 CHIL @I263@\n1 CHIL @I10733@\n1 MARR\n2 DATE 21 NOV 1902\n1 CHAN\n2 DATE 11 MAR 2014\n0 @F670@ FAM\n1 HUSB @I3799@\n1 WIFE @I3756@\n1 CHIL @I3839@\n1 MARR\n2 DATE 1 NOV 1924\n1 CHAN\n2 DATE 29 MAR 2014\n0 @F671@ FAM\n1 HUSB @I9422@\n1 WIFE @I8744@\n1 CHIL @I9085@\n1 CHIL @I11418@\n1 MARR\n1 CHAN\n2 DATE 29 MAR 2014\n0 @F672@ FAM\n1 HUSB @I2160@\n1 WIFE @I2158@\n1 CHIL @I8400@\n1 CHIL @I2162@\n1 CHIL @I6694@\n1 MARR\n2 DATE 17 JUN 1933\n1 CHAN\n2 DATE 29 MAR 2014\n0 @F673@ FAM\n1 HUSB @I194@\n1 WIFE @I83@\n1 CHIL @I157@\n1 MARR\n2 DATE 21 DEC 1946\n1 CHAN\n2 DATE 29 MAR 2014\n0 @F674@ FAM\n1 HUSB @I7227@\n1 WIFE @I6992@\n1 CHIL @I7239@\n1 CHIL @I7271@\n1 MARR\n2 DATE 30 MAR 1935\n1 CHAN\n2 DATE 29 MAR 2014\n0 @F675@ FAM\n1 HUSB @I10738@\n1 WIFE @I10733@\n1 CHIL @I4414@\n1 CHIL @I3192@\n1 CHIL @I10739@\n1 MARR\n2 DATE 25 OCT 1935\n1 CHAN\n2 DATE 29 MAR 2014\n0 @F1080@ FAM\n1 HUSB @I3839@\n1 WIFE @I3772@\n1 CHIL @I3490@\n1 CHIL @I4786@\n1 MARR\n2 DATE 4 JUN 1949\n1 CHAN\n2 DATE 23 MAR 2015\n0 @F1081@ FAM\n1 HUSB @I9085@\n1 WIFE @I8953@\n1 CHIL @I9006@\n1 MARR\n1 CHAN\n2 DATE 23 MAR 2015\n0 @F1082@ FAM\n1 HUSB @I11420@\n1 WIFE @I11418@\n1 CHIL @I11419@\n1 MARR\n1 CHAN\n2 DATE 23 MAR 2015\n0 @F1083@ FAM\n1 HUSB @I8414@\n1 WIFE @I8400@\n1 CHIL @I8404@\n1 CHIL @I8412@\n1 CHIL @I8408@\n1 MARR\n2 DATE 19 MAR 1960\n1 CHAN\n2 DATE 23 MAR 2015\n0 @F1084@ FAM\n1 HUSB @I2162@\n1 WIFE @I2159@\n1 CHIL @I2161@\n1 CHIL @I2163@\n1 MARR\n2 DATE 23 JUL 1966\n1 CHAN\n2 DATE 23 MAR 2015\n0 @F1085@ FAM\n1 HUSB @I6697@\n1 WIFE @I6694@\n1 CHIL @I6696@\n1 CHIL @I4849@\n1 MARR\n2 DATE 18 JUL 1964\n1 CHAN\n2 DATE 23 MAR 2015\n0 @F1086@ FAM\n1 HUSB @I157@\n1 WIFE @I70@\n1 CHIL @I184@\n1 CHIL @I131@\n1 MARR\n2 DATE 20 NOV 1975\n1 DIV\n2 DATE 10 MAR 1992\n1 CHAN\n2 DATE 23 MAR 2015\n0 @F1087@ FAM\n1 HUSB @I7239@\n1 WIFE @I7045@\n1 CHIL @I7103@\n1 CHIL @I7298@\n1 MARR\n2 DATE 8 JUN 1968\n1 CHAN\n2 DATE 23 MAR 2015\n0 @F1088@ FAM\n1 HUSB @I7271@\n1 WIFE @I7073@\n1 CHIL @I7193@\n1 CHIL @I7286@\n1 MARR\n2 DATE 18 DEC 1989\n1 CHAN\n2 DATE 23 MAR 2015\n0 @F1089@ FAM\n1 HUSB @I4433@\n1 WIFE @I4414@\n1 CHIL @I4421@\n1 CHIL @I4444@\n1 MARR\n2 DATE 30 APR 1958\n1 CHAN\n2 DATE 23 MAR 2015\n0 @F1090@ FAM\n1 HUSB @I3231@\n1 WIFE @I3192@\n1 MARR\n2 DATE 17 DEC 1966\n1 CHAN\n2 DATE 23 MAR 2015\n0 @F1091@ FAM\n1 HUSB @I10739@\n1 WIFE @I10734@\n1 CHIL @I10737@\n1 CHIL @I10736@\n1 MARR\n2 DATE 23 JUN 1967\n1 CHAN\n2 DATE 23 MAR 2015\n0 @F1746@ FAM\n1 HUSB @I3494@\n1 WIFE @I3490@\n1 CHIL @I3492@\n1 CHIL @I3491@\n1 CHIL @I3493@\n1 MARR\n2 DATE 6 JUL 1974\n1 CHAN\n2 DATE 16 JAN 2016\n0 @F1747@ FAM\n1 HUSB @I5064@\n1 WIFE @I4786@\n1 CHIL @I4788@\n1 CHIL @I4789@\n1 MARR\n1 CHAN\n2 DATE 16 JAN 2016\n0 @F1748@ FAM\n1 HUSB @I4787@\n1 WIFE @I4786@\n1 MARR\n2 DATE 8 MAY 1987\n1 CHAN\n2 DATE 16 JAN 2016\n0 @F1749@ FAM\n1 HUSB @I4314@\n1 WIFE @I9006@\n1 MARR\n2 DATE 29 AUG 1987\n2 PLAC Hamilton Ohio USA\n1 CHAN\n2 DATE 16 JAN 2016\n0 @F1750@ FAM\n1 HUSB @I8434@\n1 WIFE @I8404@\n1 CHIL @I8435@\n1 CHIL @I8438@\n1 CHIL @I8436@\n1 CHIL @I8433@\n1 MARR\n2 DATE 12 MAY 1984\n1 CHAN\n2 DATE 16 JAN 2016\n0 @F1751@ FAM\n1 HUSB @I8412@\n1 WIFE @I8403@\n1 CHIL @I8405@\n1 CHIL @I8411@\n1 CHIL @I8410@\n1 MARR\n2 DATE 25 MAY 1985\n1 CHAN\n2 DATE 16 JAN 2016\n0 @F1752@ FAM\n1 HUSB @I6696@\n1 WIFE @I11671@\n1 CHIL @I11668@\n1 CHIL @I6695@\n1 ENGA\n1 EVEN\n2 TYPE Sambo\n1 CHAN\n2 DATE 16 JAN 2016\n0 @F1753@ FAM\n1 HUSB @I4856@\n1 WIFE @I4849@\n1 CHIL @I4904@\n1 CHIL @I4901@\n1 CHIL @I4924@\n1 MARR\n2 DATE 19 DEC 1989\n1 CHAN\n2 DATE 16 JAN 2016\n0 @F3339@ FAM\n1 HUSB @I4421@\n1 WIFE @I4409@\n1 CHIL @I4422@\n1 CHIL @I4432@\n1 MARR\n2 DATE 2 MAY 1992\n1 CHAN\n2 DATE 2 MAR 2021\n0 @F3340@ FAM\n1 HUSB @I4444@\n1 WIFE @I5624@\n1 CHIL @I4439@\n1 CHAN\n2 DATE 2 MAR 2021\n0 @F3341@ FAM\n1 HUSB @I10735@\n1 WIFE @I10737@\n1 CHIL @I10740@\n1 MARR\n2 DATE 22 AUG 1998\n1 CHAN\n2 DATE 2 MAR 2021\n0 @F3719@ FAM\n1 HUSB @I3577@\n1 WIFE @I8408@\n1 MARR\n1 CHAN\n2 DATE 14 SEP 2022\n0 @F3720@ FAM\n1 WIFE @I8435@\n1 CHIL @I8437@\n1 CHAN\n2 DATE 14 SEP 2022\n0 @F3721@ FAM\n1 HUSB @I8402@\n1 WIFE @I8405@\n1 CHIL @I8406@\n1 CHIL @I8407@\n1 MARR\n2 DATE 8 JUN 2019\n2 PLAC S\u00e4tila (P)\n1 CHAN\n2 DATE 14 SEP 2022\n0 @F3722@ FAM\n1 HUSB @I8401@\n1 WIFE @I8411@\n1 CHIL @I8409@\n1 CHIL @I8413@\n1 CHAN\n2 DATE 14 SEP 2022\n0 @SUBM1@ SUBM\n1 NAME \n1 ADDR\n1 PHON \n0 TRLR\n";
-  var s8=_s(function(){try{var pd=parseGedcom(IDA2_GED);return pd;}catch(e){return null;}}()),parsedData=s8[0],setParsedData=s8[1];var s9=_s(1970),sliderYear=s9[0],setSliderYear=s9[1];var s10=_s(false),isPlaying=s10[0],setIsPlaying=s10[1];var s11=_s(null),rangeStart=s11[0],setRangeStart=s11[1];var s12=_s(null),rangeEnd=s12[0],setRangeEnd=s12[1];
+  var _s=useState;var s1=_s(null),layout=s1[0],setLayout=s1[1];var s2=_s(null),sel=s2[0],setSel=s2[1];var sInsp=_s(null),inspPerson=sInsp[0],setInspPerson=sInsp[1];var sLB=_s(null),panelLightbox=sLB[0],setPanelLightbox=sLB[1];var s3=_s(""),search=s3[0],setSearch=s3[1];var sSD=_s([]),searchDropdown=sSD[0],setSearchDropdown=sSD[1];var searchDebRef=useRef(null);var s4=_s(new Set()),hlIds=s4[0],setHlIds=s4[1];var s5=_s(true),showUp=s5[0],setShowUp=s5[1];var s6=_s({}),photoTex=s6[0],setPhotoTex=s6[1];var s7=_s(true),isSample=s7[0],setIsSample=s7[1];var s8=_s(null),parsedData=s8[0],setParsedData=s8[1];var sGL=_s(false),gedcomLoading=sGL[0],setGedcomLoading=sGL[1];var sGE=_s(null),gedcomError=sGE[0],setGedcomError=sGE[1];var s9=_s(1970),sliderYear=s9[0],setSliderYear=s9[1];var s10=_s(false),isPlaying=s10[0],setIsPlaying=s10[1];var s11=_s(null),rangeStart=s11[0],setRangeStart=s11[1];var s12=_s(null),rangeEnd=s12[0],setRangeEnd=s12[1];
   var s14=_s(function(){try{var r=localStorage.getItem('slakttrads_photos');return r?JSON.parse(r):{};}catch(e){return {};}}()),photoUrls=s14[0],setPhotoUrls=s14[1];
   var sPlU=useState(function(){try{var r=localStorage.getItem('slakttrads_place_photos');return r?JSON.parse(r):{};}catch(e){return {};}}()),placeUrls=sPlU[0],setPlaceUrls=sPlU[1];
   var s15=_s(0),photoCount=s15[0],setPhotoCount=s15[1];
@@ -2108,12 +2113,16 @@ function GenealogyApp(){
   },[photoUrls]);
   var s16=_s(0),viewTrigger=s16[0],setViewTrigger=s16[1];
   var s17=_s("3d"),rightView=s17[0],setRightView=s17[1];
-  // Auto-compute layout from embedded GEDCOM on mount
+  // Auto-compute layout when parsedData arrives
   useEffect(function(){
     if(parsedData&&!layout){
       setLayout(computeLayout(parsedData.individuals,parsedData.families));
       setShowUp(false);
     }
+  },[parsedData]);
+
+  // Load GEDCOM + locations.json from GitHub on mount
+  useEffect(function(){
     // Load locations.json from GitHub
     var GH_KEY="hasselon2025";
     var GH_T=[15,9,3,44,52,26,23,55,68,5,92,3,90,54,53,20,35,30,38,52,125,90,84,83,59,4,23,60,42,36,13,20,70,85,3,112,44,88,58,11];
@@ -2124,6 +2133,7 @@ function GenealogyApp(){
     var repo=(ghRaw&&ghRaw.repo)||xd2(GH_R,GH_KEY);
     var branch=(ghRaw&&ghRaw.branch)||"main";
     if(token&&repo){
+      // Load locations.json from GitHub
       fetch("https://raw.githubusercontent.com/"+repo+"/"+branch+"/slakttrads/locations.json")
         .then(function(r){return r.ok?r.json():null;})
         .then(function(data){
@@ -2268,7 +2278,7 @@ function GenealogyApp(){
       })(pending[pi]);
     }
   },[]);
-  useEffect(function(){if(!layout||!search.trim()){setHlIds(new Set());return;}var q=search.toLowerCase();setHlIds(new Set(layout.nodes.filter(function(n){return n.name.toLowerCase().indexOf(q)>=0;}).map(function(n){return n.id;})));},[search,layout]);
+  // search highlighting via searchDropdown state, not hlIds
 
   /* ── 3D SCENE — proper tree connectors ─────────────────── */
   useEffect(function(){
@@ -2396,17 +2406,24 @@ function GenealogyApp(){
     return function(){cancelAnimationFrame(frameRef.current);window.removeEventListener("resize",onR);cv.removeEventListener("mousedown",onD);cv.removeEventListener("mouseup",onU);cv.removeEventListener("mousemove",onM);cv.removeEventListener("wheel",onW);cv.removeEventListener("click",onC);cv.removeEventListener("contextmenu",onX);cv.removeEventListener("touchstart",tS);cv.removeEventListener("touchmove",tM);cv.removeEventListener("touchend",tE);ren.dispose();};
   },[layout,hlIds,photoTex,photoUrls]);
 
-  useEffect(function(){if(hlIds.size===1&&layout){var nd=layout.nodes.find(function(n){return n.id===Array.from(hlIds)[0];});if(nd){ctrl.current.tx=nd.x;ctrl.current.tz=nd.z;ctrl.current.radius=25;}}},[hlIds,layout]);
+  // hlIds only used for visual highlight, camera moved directly from search onMouseDown
 
   var stats=layout?{p:layout.nodes.length,g:layout.maxGeneration+1}:null;
   var PS={background:C.panel+"e8",borderRadius:10,border:"1px solid "+C.border,backdropFilter:"blur(10px)"};
-  function mapSel(id){if(!id){setSel(null);return;}if(!layout)return;setSel(layout.nodes.find(function(n){return n.id===id;})||null);}
+  function mapSel(id){
+    if(!id){setSel(null);setInspPerson(null);return;}
+    if(!layout||!parsedData)return;
+    var node=layout.nodes.find(function(n){return n.id===id;})||null;
+    setSel(node);
+    var ind=parsedData.individuals[id];
+    if(ind) setInspPerson(Object.assign({},ind,{id:id,generation:node?node.generation:0}));
+  }
 
     var panelPerson=inspPerson||sel;
 
   return (
     <div style={{width:"100%",height:"100vh",background:C.bg,fontFamily:"'Segoe UI',sans-serif",color:C.text,display:"flex",overflow:"hidden"}}>
-      {!showUp&&parsedData&&(<div style={{width:64,flexShrink:0,background:C.panel,borderRight:"1px solid "+C.border,display:"flex",flexDirection:"column",alignItems:"stretch",zIndex:20}}>
+      {!showUp&&!gedcomLoading&&parsedData&&(<div style={{width:64,flexShrink:0,background:C.panel,borderRight:"1px solid "+C.border,display:"flex",flexDirection:"column",alignItems:"stretch",zIndex:20}}>
         {[["3d","3D","\u25A6"],["map","Karta","\u2316"],["pedigree","Antavla","\u229E"],["fan","Solfj\u00e4der","\u25D4"],["places","Platser","\u29BF"],["photos","Foton","📷"]].map(function(t){
           return <button key={t[0]} onClick={function(){
               setRightView(t[0]);
@@ -2416,24 +2433,135 @@ function GenealogyApp(){
             <span style={{fontSize:8,letterSpacing:0.5,textTransform:"uppercase"}}>{t[1]}</span>
           </button>;})}
       </div>)}
-      {showUp&&(<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",zIndex:100,background:"linear-gradient(135deg,#080c14,#0f1928)"}}>
-        <div style={{textAlign:"center",maxWidth:520,padding:40}}>
+      {gedcomLoading&&!parsedData&&(<div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",zIndex:200,background:"linear-gradient(135deg,#080c14,#0f1928)"}}>
+        <svg width="64" height="64" viewBox="0 0 64 64" style={{marginBottom:24}}>
+          <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(74,158,255,0.15)" strokeWidth="4"/>
+          <circle cx="32" cy="32" r="28" fill="none" stroke="#4a9eff" strokeWidth="4" strokeDasharray="44 132" strokeLinecap="round">
+            <animateTransform attributeName="transform" type="rotate" from="0 32 32" to="360 32 32" dur="1s" repeatCount="indefinite"/>
+          </circle>
+          <circle cx="32" cy="32" r="18" fill="none" stroke="rgba(102,217,160,0.15)" strokeWidth="3"/>
+          <circle cx="32" cy="32" r="18" fill="none" stroke="#66d9a0" strokeWidth="3" strokeDasharray="22 92" strokeLinecap="round">
+            <animateTransform attributeName="transform" type="rotate" from="360 32 32" to="0 32 32" dur="0.7s" repeatCount="indefinite"/>
+          </circle>
+        </svg>
+        <div style={{color:"#c9d1d9",fontSize:18,fontWeight:500,marginBottom:8}}>Laddar sl&#228;kttr&#228;det</div>
+        <div style={{color:"#8b949e",fontSize:12,marginBottom:24}}>H&#228;mtar hela.ged fr&#229;n GitHub...</div>
+        {gedcomError&&<div style={{color:"#ff6b6b",fontSize:12,maxWidth:320,textAlign:"center",padding:"8px 16px",background:"rgba(255,80,80,0.1)",borderRadius:8,border:"1px solid rgba(255,80,80,0.3)"}}>{gedcomError}</div>}
+      </div>)}
+      {showUp&&!gedcomLoading&&(<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",zIndex:100,background:"linear-gradient(135deg,#080c14,#0f1928)"}}>
+        <div style={{textAlign:"center",maxWidth:580,padding:40}}>
           <div style={{width:60,height:60,margin:"0 auto 20px",borderRadius:14,background:"linear-gradient(135deg,#4a9eff,#ff6b9d)",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path d="M9 22V12h6v10"/></svg></div>
-          <div style={{fontSize:11,letterSpacing:5,color:C.dim,marginBottom:10,textTransform:"uppercase"}}>3D Genealogy Explorer</div>
-          <h1 style={{fontSize:36,fontWeight:300,margin:"0 0 6px"}}>Family Landscape</h1>
-          <p style={{color:C.dim,fontSize:14,lineHeight:1.7,margin:"0 0 30px"}}>Explore your ancestry as a 3D cityscape with an interactive geographic timeline.</p>
-          <div style={{display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap"}}>
-            <label style={{padding:"12px 24px",background:"linear-gradient(135deg,#4a9eff,#3a7fd5)",color:"#fff",borderRadius:10,cursor:"pointer",fontSize:13,fontWeight:600}}>Upload .ged<input type="file" accept=".ged,.gedcom" onChange={handleFile} style={{display:"none"}}/></label>
-            <button onClick={loadSample} style={{padding:"12px 24px",background:"rgba(255,255,255,0.05)",color:C.text,borderRadius:10,cursor:"pointer",fontSize:13,fontWeight:600,border:"1px solid "+C.border}}>Sample Family</button>
+          <div style={{fontSize:11,letterSpacing:5,color:C.dim,marginBottom:10,textTransform:"uppercase"}}>Interaktivt Släktträd</div>
+          <h1 style={{fontSize:36,fontWeight:300,margin:"0 0 6px",color:C.text}}>Family Landscape</h1>
+          <p style={{color:C.dim,fontSize:14,lineHeight:1.7,margin:"0 0 32px"}}>Utforska din släkt som ett interaktivt 3D-landskap med geografisk tidslinje.</p>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:24}}>
+            <button onClick={function(){
+              setGedcomLoading(true);setGedcomError(null);
+              var GH_KEY2="hasselon2025";
+              var GH_T2=[15,9,3,44,52,26,23,55,68,5,92,3,90,54,53,20,35,30,38,52,125,90,84,83,59,4,23,60,42,36,13,20,70,85,3,112,44,88,58,11];
+              var GH_R2=[5,0,7,0,7,28,29,1,86,31,90,84,27,18,22,31,10,2];
+              function xd3(arr,key){return arr.map(function(c,i){return String.fromCharCode(c^key.charCodeAt(i%key.length));}).join("");}
+              var ghRaw2=null;try{ghRaw2=JSON.parse(localStorage.getItem('slakttrads_gh')||'{}');}catch(e){}
+              var repo2=(ghRaw2&&ghRaw2.repo)||xd3(GH_R2,GH_KEY2);
+              var branch2=(ghRaw2&&ghRaw2.branch)||"main";
+              fetch("https://raw.githubusercontent.com/"+repo2+"/"+branch2+"/slakttrads/Ida2.ged")
+                .then(function(r){return r.ok?r.text():Promise.reject(r.status);})
+                .then(function(t){var pd=parseGedcom(t);setParsedData(pd);setGedcomLoading(false);setShowUp(false);setIsSample(true);})
+                .catch(function(e){setGedcomError("Kunde inte ladda Ida2.ged: "+e);setGedcomLoading(false);});
+            }} style={{padding:"20px 16px",background:"rgba(74,158,255,0.1)",border:"1px solid rgba(74,158,255,0.4)",borderRadius:12,cursor:"pointer",color:C.text,textAlign:"left"}}>
+              <div style={{fontSize:22,marginBottom:8}}>&#x1F4D6;</div>
+              <div style={{fontSize:14,fontWeight:600,marginBottom:4,color:"#4a9eff"}}>Ida2 — Testträdet</div>
+              <div style={{fontSize:11,color:C.dim,lineHeight:1.5}}>Ca 100 personer · Hasselon/Blomberg-släkten · Snabb laddning</div>
+            </button>
+            <button onClick={function(){
+              setGedcomLoading(true);setGedcomError(null);
+              var GH_KEY3="hasselon2025";
+              var GH_T3=[15,9,3,44,52,26,23,55,68,5,92,3,90,54,53,20,35,30,38,52,125,90,84,83,59,4,23,60,42,36,13,20,70,85,3,112,44,88,58,11];
+              var GH_R3=[5,0,7,0,7,28,29,1,86,31,90,84,27,18,22,31,10,2];
+              function xd4(arr,key){return arr.map(function(c,i){return String.fromCharCode(c^key.charCodeAt(i%key.length));}).join("");}
+              var ghRaw3=null;try{ghRaw3=JSON.parse(localStorage.getItem('slakttrads_gh')||'{}');}catch(e){}
+              var repo3=(ghRaw3&&ghRaw3.repo)||xd4(GH_R3,GH_KEY3);
+              var branch3=(ghRaw3&&ghRaw3.branch)||"main";
+              fetch("https://raw.githubusercontent.com/"+repo3+"/"+branch3+"/slakttrads/hela.ged")
+                .then(function(r){return r.ok?r.text():Promise.reject(r.status);})
+                .then(function(t){var pd=parseGedcom(t);setParsedData(pd);setGedcomLoading(false);setShowUp(false);setIsSample(false);})
+                .catch(function(e){setGedcomError("Kunde inte ladda hela.ged: "+e);setGedcomLoading(false);});
+            }} style={{padding:"20px 16px",background:"rgba(102,217,160,0.08)",border:"1px solid rgba(102,217,160,0.35)",borderRadius:12,cursor:"pointer",color:C.text,textAlign:"left"}}>
+              <div style={{fontSize:22,marginBottom:8}}>&#x1F333;</div>
+              <div style={{fontSize:14,fontWeight:600,marginBottom:4,color:"#66d9a0"}}>Hela släktträdet</div>
+              <div style={{fontSize:11,color:C.dim,lineHeight:1.5}}>11 762 personer · 3 785 familjer · Kan ta några sekunder</div>
+            </button>
           </div>
-          <p style={{marginTop:24,color:C.dim,fontSize:11}}>GEDCOM 5.5 · Map: Western Sweden with zoom/pan · <a href="https://github.com/matsbprod/hasselon" target="_blank" style={{color:C.accent}}>locations.json</a></p>
+          <div style={{borderTop:"1px solid "+C.border,paddingTop:20,display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap"}}>
+            <label style={{padding:"9px 18px",background:"rgba(255,255,255,0.05)",color:C.dim,borderRadius:8,cursor:"pointer",fontSize:12,border:"1px solid "+C.border}}>
+              Ladda upp egen .ged
+              <input type="file" accept=".ged,.gedcom" onChange={handleFile} style={{display:"none"}}/>
+            </label>
+          </div>
+          {gedcomError&&<div style={{marginTop:16,color:"#ff6b6b",fontSize:12,padding:"8px 16px",background:"rgba(255,80,80,0.1)",borderRadius:8,border:"1px solid rgba(255,80,80,0.3)"}}>{gedcomError}</div>}
         </div>
       </div>)}
-      {!showUp&&(<div style={{flex:1,position:"relative",minWidth:0,display:rightView==="3d"?"block":"none"}}>
+      {!showUp&&!gedcomLoading&&(<div style={{flex:1,position:"relative",minWidth:0,display:rightView==="3d"?"block":"none"}}>
         <div style={{width:"100%",height:"100%",position:"absolute",inset:0}}><canvas ref={cvRef} style={{width:"100%",height:"100%",display:"block"}}/></div>
         <div style={{position:"absolute",top:8,left:8,right:8,display:"flex",gap:6,alignItems:"center",zIndex:10,pointerEvents:"none",flexWrap:"wrap"}}>
           <div style={{...PS,pointerEvents:"all",padding:"5px 10px",fontSize:10,fontWeight:600,letterSpacing:2,color:C.dim,textTransform:"uppercase"}}>Family Landscape</div>
-          <div style={{...PS,pointerEvents:"all",flex:1,maxWidth:220,padding:"4px 10px"}}><div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:11,opacity:0.5}}>&#x1F50D;</span><input type="text" placeholder="Search..." value={search} onChange={function(e){setSearch(e.target.value);}} style={{width:"100%",background:"transparent",border:"none",outline:"none",color:C.text,fontSize:12,fontFamily:"inherit"}}/>{search&&<button onClick={function(){setSearch("");}} style={{background:"none",border:"none",color:C.dim,cursor:"pointer",fontSize:13,padding:0}}>x</button>}</div></div>
+          <div style={{pointerEvents:"all",flex:1,maxWidth:280,padding:"4px 10px",position:"relative",zIndex:300}}>
+            <div style={{display:"flex",alignItems:"center",gap:6,background:"rgba(255,255,255,0.06)",borderRadius:6,padding:"3px 8px"}}>
+              <span style={{fontSize:11,opacity:0.5}}>&#x1F50D;</span>
+              <input type="text" placeholder="Sök person..." value={search} onChange={function(e){
+                var q=e.target.value;setSearch(q);
+                if(searchDebRef.current)clearTimeout(searchDebRef.current);
+                if(!q.trim()){setSearchDropdown([]);return;}
+                searchDebRef.current=setTimeout(function(){
+                  if(!parsedData) return;
+                  var ql=q.toLowerCase();
+                  var results=[];
+                  var inds=parsedData.individuals;
+                  for(var id in inds){
+                    var ind2=inds[id];
+                    if(!ind2.name&&!ind2.givenName) continue;
+                    var nm=(ind2.name||"").toLowerCase();
+                    var gn=(ind2.givenName||"").toLowerCase();
+                    var sn=(ind2.surname||"").toLowerCase();
+                    if(nm.indexOf(ql)>=0||gn.indexOf(ql)>=0||sn.indexOf(ql)>=0){
+                      results.push({id:id,ind:ind2});
+                      if(results.length>=15) break;
+                    }
+                  }
+                  setSearchDropdown(results);
+                },200);
+              }}
+                style={{width:"100%",background:"transparent",border:"none",outline:"none",color:C.text,fontSize:12,fontFamily:"inherit"}}/>
+              {search&&<button onClick={function(){setSearch("");setHlIds(new Set());setSearchDropdown([]);}} style={{background:"none",border:"none",color:C.dim,cursor:"pointer",fontSize:13,padding:0}}>&#x2715;</button>}
+            </div>
+            {searchDropdown.length>0&&(<div style={{position:"absolute",top:"100%",left:0,right:0,background:C.panel,border:"1px solid "+C.border,borderRadius:8,zIndex:200,maxHeight:300,overflowY:"auto",boxShadow:"0 8px 24px rgba(0,0,0,0.5)",marginTop:4}}>
+              {searchDropdown.map(function(hit){
+                var hid=hit.id,hind=hit.ind;
+                var birth=hind.birthDate||"",death=hind.deathDate||"";
+                return(<div key={hid} style={{padding:"8px 12px",cursor:"pointer",borderBottom:"1px solid "+C.border+"44",display:"flex",alignItems:"center",gap:8}}
+                  onMouseDown={function(e){e.preventDefault();
+                    setSearch("");setSearchDropdown([]);
+                    var node=layout&&layout.nodes.find(function(nd){return nd.id===hid;});
+                    setSel(node||null);
+                    setInspPerson(Object.assign({},hind,{id:hid,generation:node?node.generation:0}));
+                    if(node&&ctrl.current&&upCamRef.current){
+                      var cc2=ctrl.current;
+                      cc2.tx=node.x;cc2.tz=node.z;cc2.ty=2;
+                      cc2.radius=18;cc2.phi=0.15;cc2.theta=Math.PI/2;
+                      upCamRef.current();
+                    }
+                  }}>
+                  {photoUrls[hid]&&photoUrls[hid][0]
+                    ?<img src={photoUrls[hid][0].url} style={{width:28,height:28,borderRadius:4,objectFit:"cover",flexShrink:0}}/>
+                    :<div style={{width:28,height:28,borderRadius:4,background:"rgba(255,255,255,0.06)",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:C.dim}}>{hind.sex==="F"?"♀":"♂"}</div>}
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:12,fontWeight:500,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{hind.name||hind.givenName||"?"}</div>
+                    {(birth||death)&&<div style={{fontSize:10,color:C.dim}}>{birth}{death?" – "+death:""}</div>}
+                  </div>
+                </div>);
+              })}
+            </div>)}
+          </div>
           {stats&&<div style={{...PS,pointerEvents:"all",padding:"5px 10px",fontSize:10}}><span style={{color:C.dim}}>People </span><strong>{stats.p}</strong><span style={{color:C.dim,marginLeft:6}}>Gen </span><strong>{stats.g}</strong>{photoCount>0&&<span style={{color:"#66d9a0",marginLeft:6}}>{photoCount} photos</span>}</div>}
           <label style={{...PS,pointerEvents:"all",padding:"5px 10px",cursor:"pointer",fontSize:10,color:C.accent,fontWeight:600}}>+<input type="file" accept=".ged,.gedcom" onChange={handleFile} style={{display:"none"}}/></label>
           <label style={{...PS,pointerEvents:"all",padding:"5px 10px",cursor:"pointer",fontSize:10,color:"#c4a632",fontWeight:600}} title="Ladda locations.json">
@@ -2454,14 +2582,7 @@ function GenealogyApp(){
           </div>
           <div style={{padding:"8px 14px 10px",fontSize:12,display:"grid",gap:4}}>
             {panelPerson.birthDate&&<div><span style={{color:C.dim}}>Född </span>{panelPerson.birthDate}{panelPerson.birthPlace?" · "+panelPerson.birthPlace:""}</div>}
-              {panelPerson.birthPlace&&lookupLocation(panelPerson.birthPlace)&&(<div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:4}}>
-                {(function(){var _loc=lookupLocation(panelPerson.birthPlace)||{};var _z=placeZoom(panelPerson.birthPlace);return [
-                  ["📜 Ekon.karta",0x10000,"rgba(255,200,50,0.15)","rgba(255,200,50,0.4)","#ffd060"],
-                  ["✈ Flygfoto 1960",0x100,"rgba(100,180,255,0.15)","rgba(100,180,255,0.4)","#64b4ff"],
-                  ["✈ Flygfoto 1975",0x200,"rgba(100,180,255,0.15)","rgba(100,180,255,0.4)","#64b4ff"],
-                  ["🗺 Topo",0x1000,"rgba(100,200,100,0.15)","rgba(100,200,100,0.4)","#80d080"]
-                ].map(function(kb){return <a key={kb[0]} href={kartbildUrl(_loc.lat,_loc.lon,kb[1],_z)} target="_blank" style={{fontSize:9,padding:"2px 6px",background:kb[2],border:"1px solid "+kb[3],borderRadius:3,color:kb[4],textDecoration:"none"}}>{kb[0]}</a>;})})()}
-              </div>)}
+
               {panelPerson.deathDate&&<div><span style={{color:C.dim}}>Död </span>{panelPerson.deathDate}{panelPerson.deathPlace?" · "+panelPerson.deathPlace:""}</div>}
           </div>
           {photoUrls[panelPerson.id]&&photoUrls[panelPerson.id].length>0&&(
@@ -2478,7 +2599,7 @@ function GenealogyApp(){
         </div>)}
       </div>)}
       
-      {!showUp&&parsedData&&rightView!=="3d"&&(<div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0}}>
+      {!showUp&&!gedcomLoading&&parsedData&&rightView!=="3d"&&(<div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0}}>
         <div style={{display:"flex",gap:0,borderBottom:"1px solid "+C.border,flexShrink:0}}>
           
           {(rightView==="pedigree"||rightView==="fan")&&<div style={{display:"flex",borderLeft:"1px solid "+C.border}}><button onClick={function(){setPedigreeMode("ancestors");}} style={{padding:"8px 10px",fontSize:9,fontWeight:pedigreeMode==="ancestors"?700:400,color:pedigreeMode==="ancestors"?"#66d9a0":C.dim,background:pedigreeMode==="ancestors"?"rgba(102,217,160,0.08)":"transparent",border:"none",cursor:"pointer"}}>{"↑ Ancestors"}</button><button onClick={function(){setPedigreeMode("descendants");}} style={{padding:"8px 10px",fontSize:9,fontWeight:pedigreeMode==="descendants"?700:400,color:pedigreeMode==="descendants"?"#ff6b9d":C.dim,background:pedigreeMode==="descendants"?"rgba(255,107,157,0.08)":"transparent",border:"none",cursor:"pointer"}}>{"↓ Descendants"}</button></div>}
