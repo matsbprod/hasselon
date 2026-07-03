@@ -2748,7 +2748,7 @@ function GenealogyApp(){
           <img src={ph.url}
             style={{maxWidth:"88vw",maxHeight:"75vh",objectFit:"contain",borderRadius:lbZoom<=1?10:0,border:lbZoom<=1?"1px solid #444":"none",
               transform:"scale("+lbZoom+") translate("+lbX/lbZoom+"px,"+lbY/lbZoom+"px)",
-              transformOrigin:"center",transition:lbDragging?"none":"transform 0.1s",
+              transformOrigin:"center",transition:lbDragRef.current.dragging?"none":"transform 0.1s",
               userSelect:"none",pointerEvents:"none"}}/>
         </div>
         {/* Caption */}
