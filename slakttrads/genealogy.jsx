@@ -2123,6 +2123,8 @@ function GenealogyApp(){
     if(parsedData&&!layout){
       setLayout(computeLayout(parsedData.individuals,parsedData.families));
       setShowUp(false);
+      // Clear photoTex so old textures from previous tree don't cause precision errors
+      setPhotoTex({});
     }
   },[parsedData]);
 
@@ -2314,7 +2316,8 @@ function GenealogyApp(){
       grp.add(new THREE.Mesh(new THREE.BoxGeometry(1.5,0.12,1.5),new THREE.MeshStandardMaterial({color:gc3,emissive:new THREE.Color(gc3),emissiveIntensity:0.25,roughness:0.2,metalness:0.6})).translateY(bH+0.2));
       var pT=photoTex[n.id];
       var portTex=pT||mkSilhTex(n.sex);
-      var ps=new THREE.Sprite(new THREE.SpriteMaterial({map:portTex,transparent:true}));
+      var spMat;try{spMat=new THREE.SpriteMaterial({map:portTex,transparent:true});}catch(e){spMat=new THREE.SpriteMaterial({map:mkSilhTex(n.sex),transparent:true});}
+      var ps=new THREE.Sprite(spMat);
       ps.position.y=bH+2.1;ps.scale.set(pT?2.4:2.2,pT?2.4:2.75,1);ps.userData={nodeId:n.id};grp.add(ps);clickables.push(ps);
       var ds=[n.birthDate,n.deathDate].filter(Boolean),dt=ds.length===2?ds[0]+" - "+ds[1]:(ds[0]||"");
       var lsp=new THREE.Sprite(mkLabel(n.name,dt,isHL));lsp.position.y=bH+3.9;lsp.scale.set(6,1.8,1);grp.add(lsp);
