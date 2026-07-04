@@ -2123,8 +2123,10 @@ function GenealogyApp(){
     if(parsedData&&!layout){
       setLayout(computeLayout(parsedData.individuals,parsedData.families));
       setShowUp(false);
-      // Clear photoTex so old textures from previous tree don't cause precision errors
+      // Clear ALL cached textures - new WebGL renderer = old textures invalid
       setPhotoTex({});
+      // Clear silhouette cache (THREE.CanvasTexture tied to old renderer)
+      for(var sk in _silhCache) delete _silhCache[sk];
     }
   },[parsedData]);
 
@@ -2309,6 +2311,8 @@ function GenealogyApp(){
     for(var g=0;g<=layout.maxGeneration;g++){var gc2=GC[g%GC.length];var lc=document.createElement("canvas");lc.width=256;lc.height=40;var lx=lc.getContext("2d");lx.font="bold 16px Arial";lx.fillStyle=gc2;lx.globalAlpha=0.7;lx.fillText(GL[g]||"Gen "+(g+1),8,26);var ls=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(lc),transparent:true,depthTest:false}));ls.position.set(-layout.nodes.length*1.5,0.4,g*18);ls.scale.set(8,1.3,1);scene.add(ls);}
 
     var meshes={},clickables=[];
+    // Ensure silhouette textures are fresh for this renderer
+    for(var sk2 in _silhCache) delete _silhCache[sk2];
     for(var ni=0;ni<layout.nodes.length;ni++){var n=layout.nodes[ni];var isHL=hlIds.has(n.id);var bc=isHL?C.highlight:(n.sex==="M"?C.male:n.sex==="F"?C.female:C.unknown);var gc3=GC[n.generation%GC.length];
       var grp=new THREE.Group();grp.position.set(n.x,0,n.z);
       grp.add(new THREE.Mesh(new THREE.CylinderGeometry(1.8,2.0,0.2,6),new THREE.MeshStandardMaterial({color:bc,emissive:new THREE.Color(bc),emissiveIntensity:isHL?0.5:0.1,roughness:0.3,metalness:0.5,transparent:true,opacity:0.8})).translateY(0.1));
