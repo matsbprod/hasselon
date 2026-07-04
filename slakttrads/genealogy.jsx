@@ -1495,10 +1495,12 @@ function PhotoManager(props){
     var arr=next[editId]||[];
     var first=arr.find(function(p){return p.type==="portrait"&&p.label&&(p.label.indexOf("vuxen")>=0||p.label.indexOf("adult")>=0);})||arr.find(function(p){return p.type==="portrait";})||arr[0];
     if(first&&first.url&&typeof THREE!=="undefined"){
-      var loader2=new THREE.TextureLoader();loader2.crossOrigin="anonymous";
-      loader2.load(first.url,function(tex2){
-        setPhotoTex(function(prev){var n={};for(var k in prev)n[k]=prev[k];n[editId]=tex2;return n;});
-      });
+      try{
+        var loader2=new THREE.TextureLoader();loader2.crossOrigin="anonymous";
+        loader2.load(first.url,function(tex2){
+          try{setPhotoTex(function(prev){var n={};for(var k in prev)n[k]=prev[k];n[editId]=tex2;return n;});}catch(e){console.warn("tex set err:",e.message);}
+        });
+      }catch(e){console.warn("TextureLoader err:",e.message);}
     }
   }
 
@@ -2081,25 +2083,28 @@ function GenealogyApp(){
     if(!toLoad.length) return;
     // Use THREE.TextureLoader if available (works with SVG + avoids canvas taint)
     function loadOne(id,src){
-      if(typeof THREE!=="undefined"){
+      // Only load textures if THREE is available and has an active renderer
+      if(typeof THREE==="undefined") return;
+      try{
         var loader=new THREE.TextureLoader();
         loader.crossOrigin="anonymous";
         loader.load(src,function(tex){
-          setPhotoTex(function(prev){var n={};for(var k2 in prev)n[k2]=prev[k2];n[id]=tex;return n;});
+          try{setPhotoTex(function(prev){var n={};for(var k2 in prev)n[k2]=prev[k2];n[id]=tex;return n;});}catch(e){console.warn("photoTex set failed:",e.message);}
         },undefined,function(){
-          // fallback canvas for data: URLs
           var img=new Image();
           img.onload=function(){
-            var cv=document.createElement("canvas");cv.width=128;cv.height=128;
-            var ctx=cv.getContext("2d");
-            var sz=Math.min(img.width,img.height),sx=(img.width-sz)/2,sy=(img.height-sz)/2;
-            ctx.beginPath();ctx.arc(64,64,60,0,Math.PI*2);ctx.clip();
-            ctx.drawImage(img,sx,sy,sz,sz,0,0,128,128);
-            if(typeof THREE!=="undefined") setPhotoTex(function(prev){var n={};for(var k3 in prev)n[k3]=prev[k3];n[id]=new THREE.CanvasTexture(cv);return n;});
+            try{
+              var cv=document.createElement("canvas");cv.width=128;cv.height=128;
+              var ctx=cv.getContext("2d");
+              var sz=Math.min(img.width,img.height),sx=(img.width-sz)/2,sy=(img.height-sz)/2;
+              ctx.beginPath();ctx.arc(64,64,60,0,Math.PI*2);ctx.clip();
+              ctx.drawImage(img,sx,sy,sz,sz,0,0,128,128);
+              if(typeof THREE!=="undefined") setPhotoTex(function(prev){var n={};for(var k3 in prev)n[k3]=prev[k3];n[id]=new THREE.CanvasTexture(cv);return n;});
+            }catch(e){console.warn("photoTex canvas failed:",e.message);}
           };
           img.src=src;
         });
-      }
+      }catch(e){console.warn("TextureLoader failed:",e.message);}
     }
     // Retry until THREE is available (scene may not be active yet)
     function tryLoad(attempts){
@@ -2171,10 +2176,12 @@ function GenealogyApp(){
           var first3=arr3.find(function(p){return p.type==="portrait"&&p.label&&(p.label.indexOf("vuxen")>=0||p.label.indexOf("adult")>=0);})||arr3.find(function(p){return p.type==="portrait";})||arr3[0];
           if(first3&&first3.url){
             (function(id,src){
-              var loader3=new THREE.TextureLoader();loader3.crossOrigin="anonymous";
-              loader3.load(src,function(tex3){
-                setPhotoTex(function(prev){var n={};for(var k4 in prev)n[k4]=prev[k4];n[id]=tex3;return n;});
-              });
+              try{
+                var loader3=new THREE.TextureLoader();loader3.crossOrigin="anonymous";
+                loader3.load(src,function(tex3){
+                  try{setPhotoTex(function(prev){var n={};for(var k4 in prev)n[k4]=prev[k4];n[id]=tex3;return n;});}catch(e){console.warn("tex3 err:",e.message);}
+                });
+              }catch(e){console.warn("loader3 err:",e.message);}
             })(k,first3.url);
           }
         }
