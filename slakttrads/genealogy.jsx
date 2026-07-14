@@ -1354,7 +1354,7 @@ function PhotoManager(props){
     var type="other";
     if(dl.indexOf("brollop")>=0||dl.indexOf("wedding")>=0||dl.indexOf("vigsel")>=0) type="wedding";
     else if(dl.indexOf("plats")>=0||dl.indexOf("hus")>=0||dl.indexOf("gard")>=0||dl.indexOf("torp")>=0||dl.indexOf("gatan")>=0||dl.indexOf("vagen")>=0) type="place";
-    else if(dl.indexOf("kyrkbok")>=0||dl.indexOf("husforh")>=0||dl.indexOf("fod")>=0||dl.indexOf("dod")>=0||dl.indexOf("document")>=0) type="document";
+    else if(dl.indexOf("kyrkbok")>=0||dl.indexOf("husforh")>=0||dl.indexOf("fodd")>=0||dl.indexOf("dod")>=0||dl.indexOf("document")>=0) type="document";
     else if(dl.indexOf("grupp")>=0||dl.indexOf("group")>=0||dl.indexOf("familj")>=0) type="group";
     else type="portrait";
     var yearMatch=base.match(/_(1[0-9]{3}|2[0-9]{3})/);
@@ -1495,10 +1495,12 @@ function PhotoManager(props){
     var arr=next[editId]||[];
     var first=arr.find(function(p){return p.type==="portrait"&&p.label&&(p.label.indexOf("vuxen")>=0||p.label.indexOf("adult")>=0);})||arr.find(function(p){return p.type==="portrait";})||arr[0];
     if(first&&first.url&&typeof THREE!=="undefined"){
-      var loader2=new THREE.TextureLoader();loader2.crossOrigin="anonymous";
-      loader2.load(first.url,function(tex2){
-        setPhotoTex(function(prev){var n={};for(var k in prev)n[k]=prev[k];n[editId]=tex2;return n;});
-      });
+      try{
+        var loader2=new THREE.TextureLoader();loader2.crossOrigin="anonymous";
+        loader2.load(first.url,function(tex2){
+          try{setPhotoTex(function(prev){var n={};for(var k in prev)n[k]=prev[k];n[editId]=tex2;return n;});}catch(e){console.warn("tex set err:",e.message);}
+        });
+      }catch(e){console.warn("TextureLoader err:",e.message);}
     }
   }
 
@@ -2064,7 +2066,7 @@ function PlacesEditor({individuals,families,extraLocs,setExtraLocs,selectedId,bu
 
 
 function GenealogyApp(){
-  var _s=useState;var s1=_s(null),layout=s1[0],setLayout=s1[1];var s2=_s(null),sel=s2[0],setSel=s2[1];var sInsp=_s(null),inspPerson=sInsp[0],setInspPerson=sInsp[1];var sLB=_s(null),panelLightbox=sLB[0],setPanelLightbox=sLB[1];var s3=_s(""),search=s3[0],setSearch=s3[1];var sSD=_s([]),searchDropdown=sSD[0],setSearchDropdown=sSD[1];var searchDebRef=useRef(null);var s4=_s(new Set()),hlIds=s4[0],setHlIds=s4[1];var s5=_s(true),showUp=s5[0],setShowUp=s5[1];var s6=_s({}),photoTex=s6[0],setPhotoTex=s6[1];var s7=_s(true),isSample=s7[0],setIsSample=s7[1];var s8=_s(null),parsedData=s8[0],setParsedData=s8[1];var sGL=_s(false),gedcomLoading=sGL[0],setGedcomLoading=sGL[1];var sGE=_s(null),gedcomError=sGE[0],setGedcomError=sGE[1];var s9=_s(1970),sliderYear=s9[0],setSliderYear=s9[1];var s10=_s(false),isPlaying=s10[0],setIsPlaying=s10[1];var s11=_s(null),rangeStart=s11[0],setRangeStart=s11[1];var s12=_s(null),rangeEnd=s12[0],setRangeEnd=s12[1];
+  var _s=useState;var s1=_s(null),layout=s1[0],setLayout=s1[1];var s2=_s(null),sel=s2[0],setSel=s2[1];var sInsp=_s(null),inspPerson=sInsp[0],setInspPerson=sInsp[1];var sLB=_s(null),panelLightbox=sLB[0],setPanelLightbox=sLB[1];var lbDragRef=useRef({dragging:false,sx:0,sy:0,spx:0,spy:0});var s3=_s(""),search=s3[0],setSearch=s3[1];var sSD=_s([]),searchDropdown=sSD[0],setSearchDropdown=sSD[1];var searchDebRef=useRef(null);var s4=_s(new Set()),hlIds=s4[0],setHlIds=s4[1];var s5=_s(true),showUp=s5[0],setShowUp=s5[1];var s6=_s({}),photoTex=s6[0],setPhotoTex=s6[1];var s7=_s(true),isSample=s7[0],setIsSample=s7[1];var s8=_s(null),parsedData=s8[0],setParsedData=s8[1];var sGL=_s(false),gedcomLoading=sGL[0],setGedcomLoading=sGL[1];var sGE=_s(null),gedcomError=sGE[0],setGedcomError=sGE[1];var s9=_s(1970),sliderYear=s9[0],setSliderYear=s9[1];var s10=_s(false),isPlaying=s10[0],setIsPlaying=s10[1];var s11=_s(null),rangeStart=s11[0],setRangeStart=s11[1];var s12=_s(null),rangeEnd=s12[0],setRangeEnd=s12[1];
   var s14=_s(function(){try{var r=localStorage.getItem('slakttrads_photos');return r?JSON.parse(r):{};}catch(e){return {};}}()),photoUrls=s14[0],setPhotoUrls=s14[1];
   var sPlU=useState(function(){try{var r=localStorage.getItem('slakttrads_place_photos');return r?JSON.parse(r):{};}catch(e){return {};}}()),placeUrls=sPlU[0],setPlaceUrls=sPlU[1];
   var s15=_s(0),photoCount=s15[0],setPhotoCount=s15[1];
@@ -2081,25 +2083,28 @@ function GenealogyApp(){
     if(!toLoad.length) return;
     // Use THREE.TextureLoader if available (works with SVG + avoids canvas taint)
     function loadOne(id,src){
-      if(typeof THREE!=="undefined"){
+      // Only load textures if THREE is available and has an active renderer
+      if(typeof THREE==="undefined") return;
+      try{
         var loader=new THREE.TextureLoader();
         loader.crossOrigin="anonymous";
         loader.load(src,function(tex){
-          setPhotoTex(function(prev){var n={};for(var k2 in prev)n[k2]=prev[k2];n[id]=tex;return n;});
+          try{setPhotoTex(function(prev){var n={};for(var k2 in prev)n[k2]=prev[k2];n[id]=tex;return n;});}catch(e){console.warn("photoTex set failed:",e.message);}
         },undefined,function(){
-          // fallback canvas for data: URLs
           var img=new Image();
           img.onload=function(){
-            var cv=document.createElement("canvas");cv.width=128;cv.height=128;
-            var ctx=cv.getContext("2d");
-            var sz=Math.min(img.width,img.height),sx=(img.width-sz)/2,sy=(img.height-sz)/2;
-            ctx.beginPath();ctx.arc(64,64,60,0,Math.PI*2);ctx.clip();
-            ctx.drawImage(img,sx,sy,sz,sz,0,0,128,128);
-            if(typeof THREE!=="undefined") setPhotoTex(function(prev){var n={};for(var k3 in prev)n[k3]=prev[k3];n[id]=new THREE.CanvasTexture(cv);return n;});
+            try{
+              var cv=document.createElement("canvas");cv.width=128;cv.height=128;
+              var ctx=cv.getContext("2d");
+              var sz=Math.min(img.width,img.height),sx=(img.width-sz)/2,sy=(img.height-sz)/2;
+              ctx.beginPath();ctx.arc(64,64,60,0,Math.PI*2);ctx.clip();
+              ctx.drawImage(img,sx,sy,sz,sz,0,0,128,128);
+              if(typeof THREE!=="undefined") setPhotoTex(function(prev){var n={};for(var k3 in prev)n[k3]=prev[k3];n[id]=new THREE.CanvasTexture(cv);return n;});
+            }catch(e){console.warn("photoTex canvas failed:",e.message);}
           };
           img.src=src;
         });
-      }
+      }catch(e){console.warn("TextureLoader failed:",e.message);}
     }
     // Retry until THREE is available (scene may not be active yet)
     function tryLoad(attempts){
@@ -2118,6 +2123,10 @@ function GenealogyApp(){
     if(parsedData&&!layout){
       setLayout(computeLayout(parsedData.individuals,parsedData.families));
       setShowUp(false);
+      // Clear ALL cached textures - new WebGL renderer = old textures invalid
+      setPhotoTex({});
+      // Clear silhouette cache (THREE.CanvasTexture tied to old renderer)
+      for(var sk in _silhCache) delete _silhCache[sk];
     }
   },[parsedData]);
 
@@ -2171,10 +2180,12 @@ function GenealogyApp(){
           var first3=arr3.find(function(p){return p.type==="portrait"&&p.label&&(p.label.indexOf("vuxen")>=0||p.label.indexOf("adult")>=0);})||arr3.find(function(p){return p.type==="portrait";})||arr3[0];
           if(first3&&first3.url){
             (function(id,src){
-              var loader3=new THREE.TextureLoader();loader3.crossOrigin="anonymous";
-              loader3.load(src,function(tex3){
-                setPhotoTex(function(prev){var n={};for(var k4 in prev)n[k4]=prev[k4];n[id]=tex3;return n;});
-              });
+              try{
+                var loader3=new THREE.TextureLoader();loader3.crossOrigin="anonymous";
+                loader3.load(src,function(tex3){
+                  try{setPhotoTex(function(prev){var n={};for(var k4 in prev)n[k4]=prev[k4];n[id]=tex3;return n;});}catch(e){console.warn("tex3 err:",e.message);}
+                });
+              }catch(e){console.warn("loader3 err:",e.message);}
             })(k,first3.url);
           }
         }
@@ -2300,6 +2311,8 @@ function GenealogyApp(){
     for(var g=0;g<=layout.maxGeneration;g++){var gc2=GC[g%GC.length];var lc=document.createElement("canvas");lc.width=256;lc.height=40;var lx=lc.getContext("2d");lx.font="bold 16px Arial";lx.fillStyle=gc2;lx.globalAlpha=0.7;lx.fillText(GL[g]||"Gen "+(g+1),8,26);var ls=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(lc),transparent:true,depthTest:false}));ls.position.set(-layout.nodes.length*1.5,0.4,g*18);ls.scale.set(8,1.3,1);scene.add(ls);}
 
     var meshes={},clickables=[];
+    // Ensure silhouette textures are fresh for this renderer
+    for(var sk2 in _silhCache) delete _silhCache[sk2];
     for(var ni=0;ni<layout.nodes.length;ni++){var n=layout.nodes[ni];var isHL=hlIds.has(n.id);var bc=isHL?C.highlight:(n.sex==="M"?C.male:n.sex==="F"?C.female:C.unknown);var gc3=GC[n.generation%GC.length];
       var grp=new THREE.Group();grp.position.set(n.x,0,n.z);
       grp.add(new THREE.Mesh(new THREE.CylinderGeometry(1.8,2.0,0.2,6),new THREE.MeshStandardMaterial({color:bc,emissive:new THREE.Color(bc),emissiveIntensity:isHL?0.5:0.1,roughness:0.3,metalness:0.5,transparent:true,opacity:0.8})).translateY(0.1));
@@ -2307,7 +2320,8 @@ function GenealogyApp(){
       grp.add(new THREE.Mesh(new THREE.BoxGeometry(1.5,0.12,1.5),new THREE.MeshStandardMaterial({color:gc3,emissive:new THREE.Color(gc3),emissiveIntensity:0.25,roughness:0.2,metalness:0.6})).translateY(bH+0.2));
       var pT=photoTex[n.id];
       var portTex=pT||mkSilhTex(n.sex);
-      var ps=new THREE.Sprite(new THREE.SpriteMaterial({map:portTex,transparent:true}));
+      var spMat;try{spMat=new THREE.SpriteMaterial({map:portTex,transparent:true});}catch(e){spMat=new THREE.SpriteMaterial({map:mkSilhTex(n.sex),transparent:true});}
+      var ps=new THREE.Sprite(spMat);
       ps.position.y=bH+2.1;ps.scale.set(pT?2.4:2.2,pT?2.4:2.75,1);ps.userData={nodeId:n.id};grp.add(ps);clickables.push(ps);
       var ds=[n.birthDate,n.deathDate].filter(Boolean),dt=ds.length===2?ds[0]+" - "+ds[1]:(ds[0]||"");
       var lsp=new THREE.Sprite(mkLabel(n.name,dt,isHL));lsp.position.y=bH+3.9;lsp.scale.set(6,1.8,1);grp.add(lsp);
@@ -2711,19 +2725,55 @@ function GenealogyApp(){
           </div>
         </div>
       </div>)}
-    {panelLightbox&&(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.88)",zIndex:9000,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}
-      onClick={function(){setPanelLightbox(null);}}>
-      <button onClick={function(){setPanelLightbox(null);}} style={{position:"fixed",top:16,right:16,background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",fontSize:20,width:38,height:38,borderRadius:8,cursor:"pointer",zIndex:9001}}>&#x2715;</button>
-      {panelLightbox.idx>0&&<button onClick={function(e){e.stopPropagation();setPanelLightbox(function(lb){return{photos:lb.photos,idx:lb.idx-1};});}} style={{position:"fixed",left:16,top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",fontSize:32,width:48,height:48,borderRadius:8,cursor:"pointer",zIndex:9001}}>&#8249;</button>}
-      {panelLightbox.idx<panelLightbox.photos.length-1&&<button onClick={function(e){e.stopPropagation();setPanelLightbox(function(lb){return{photos:lb.photos,idx:lb.idx+1};});}} style={{position:"fixed",right:16,top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",fontSize:32,width:48,height:48,borderRadius:8,cursor:"pointer",zIndex:9001}}>&#8250;</button>}
-      <img src={panelLightbox.photos[panelLightbox.idx].url} style={{maxWidth:"88vw",maxHeight:"78vh",objectFit:"contain",borderRadius:10,border:"1px solid #444"}} onClick={function(e){e.stopPropagation();}}/>
-      <div style={{marginTop:12,textAlign:"center"}} onClick={function(e){e.stopPropagation();}}>
-        <div style={{color:"#fff",fontSize:14,fontWeight:600}}>{panelLightbox.photos[panelLightbox.idx].label||"Foto "+(panelLightbox.idx+1)}</div>
-        {panelLightbox.photos[panelLightbox.idx].year&&<div style={{color:"#8899aa",fontSize:12,marginTop:2}}>{panelLightbox.photos[panelLightbox.idx].year}</div>}
-        {panelLightbox.photos[panelLightbox.idx].source&&<div style={{color:"#8899aa",fontSize:11,marginTop:1}}>Källa: {panelLightbox.photos[panelLightbox.idx].source}</div>}
-        <div style={{color:"#666",fontSize:11,marginTop:3}}>{panelLightbox.idx+1} / {panelLightbox.photos.length}</div>
-      </div>
-    </div>)}
+    {panelLightbox&&(function(){
+      var lbZoom=panelLightbox.zoom||1;
+      var lbX=panelLightbox.panX||0;
+      var lbY=panelLightbox.panY||0;
+      var ph=panelLightbox.photos[panelLightbox.idx];
+      function zoom(delta,cx,cy){
+        var next=Math.max(1,Math.min(8,lbZoom*Math.pow(1.15,delta)));
+        // Zoom towards cursor point
+        var scale=next/lbZoom;
+        setPanelLightbox(function(lb){return Object.assign({},lb,{zoom:next,panX:(lb.panX||0)*scale,panY:(lb.panY||0)*scale});});
+      }
+      return(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.92)",zIndex:9000,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",overflow:"hidden"}}
+        onClick={function(){if(lbZoom<=1)setPanelLightbox(null);}}
+        onWheel={function(e){e.preventDefault();zoom(e.deltaY<0?1:-1,e.clientX,e.clientY);}}
+        onDoubleClick={function(e){e.stopPropagation();if(lbZoom>1){setPanelLightbox(function(lb){return Object.assign({},lb,{zoom:1,panX:0,panY:0});});}else{zoom(3,e.clientX,e.clientY);}}}
+      >
+        {/* Close */}
+        <button onClick={function(e){e.stopPropagation();setPanelLightbox(null);}} style={{position:"fixed",top:16,right:16,background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",fontSize:20,width:38,height:38,borderRadius:8,cursor:"pointer",zIndex:9001}}>&#x2715;</button>
+        {/* Zoom buttons */}
+        <div style={{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",display:"flex",gap:6,zIndex:9001}}>
+          <button onClick={function(e){e.stopPropagation();zoom(3);}} style={{background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",fontSize:16,width:34,height:34,borderRadius:7,cursor:"pointer"}}>+</button>
+          <button onClick={function(e){e.stopPropagation();setPanelLightbox(function(lb){return Object.assign({},lb,{zoom:1,panX:0,panY:0});});}} style={{background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",fontSize:10,width:44,height:34,borderRadius:7,cursor:"pointer"}}>{Math.round(lbZoom*100)}%</button>
+          <button onClick={function(e){e.stopPropagation();zoom(-3);}} style={{background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",fontSize:16,width:34,height:34,borderRadius:7,cursor:"pointer"}}>−</button>
+        </div>
+        {/* Prev/Next */}
+        {panelLightbox.idx>0&&<button onClick={function(e){e.stopPropagation();setPanelLightbox(function(lb){return Object.assign({},lb,{idx:lb.idx-1,zoom:1,panX:0,panY:0});});}} style={{position:"fixed",left:16,top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",fontSize:32,width:48,height:48,borderRadius:8,cursor:"pointer",zIndex:9001}}>&#8249;</button>}
+        {panelLightbox.idx<panelLightbox.photos.length-1&&<button onClick={function(e){e.stopPropagation();setPanelLightbox(function(lb){return Object.assign({},lb,{idx:lb.idx+1,zoom:1,panX:0,panY:0});});}} style={{position:"fixed",right:16,top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",fontSize:32,width:48,height:48,borderRadius:8,cursor:"pointer",zIndex:9001}}>&#8250;</button>}
+        {/* Image with zoom+pan */}
+        <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",width:"100%",overflow:"hidden",cursor:lbZoom>1?"crosshair":"default"}}
+          onMouseDown={function(e){if(lbZoom<=1)return;e.stopPropagation();e.preventDefault();var d=lbDragRef.current;d.dragging=true;d.sx=e.clientX;d.sy=e.clientY;d.spx=panelLightbox.panX||0;d.spy=panelLightbox.panY||0;}}
+          onMouseMove={function(e){var d=lbDragRef.current;if(!d.dragging)return;setPanelLightbox(function(lb){return Object.assign({},lb,{panX:d.spx+(e.clientX-d.sx),panY:d.spy+(e.clientY-d.sy)});});}}
+          onMouseUp={function(){lbDragRef.current.dragging=false;}}
+          onMouseLeave={function(){lbDragRef.current.dragging=false;}}
+          onClick={function(e){e.stopPropagation();}}>
+          <img src={ph.url}
+            style={{maxWidth:"88vw",maxHeight:"75vh",objectFit:"contain",borderRadius:lbZoom<=1?10:0,border:lbZoom<=1?"1px solid #444":"none",
+              transform:"scale("+lbZoom+") translate("+lbX/lbZoom+"px,"+lbY/lbZoom+"px)",
+              transformOrigin:"center",transition:lbDragRef.current.dragging?"none":"transform 0.1s",
+              userSelect:"none",pointerEvents:"none"}}/>
+        </div>
+        {/* Caption */}
+        <div style={{padding:"8px 16px 16px",textAlign:"center"}} onClick={function(e){e.stopPropagation();}}>
+          <div style={{color:"#fff",fontSize:14,fontWeight:600}}>{ph.label||"Foto "+(panelLightbox.idx+1)}</div>
+          {ph.year&&<div style={{color:"#8899aa",fontSize:12,marginTop:2}}>{ph.year}</div>}
+          {ph.source&&<div style={{color:"#8899aa",fontSize:11,marginTop:1}}>Källa: {ph.source}</div>}
+          <div style={{color:"#555",fontSize:11,marginTop:3}}>{panelLightbox.idx+1} / {panelLightbox.photos.length} · Scrolla eller +/− för zoom · Dubbelklicka för att zooma in/ut</div>
+        </div>
+      </div>);
+    })()}
     </div>
   );
 }
