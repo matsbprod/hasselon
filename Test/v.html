@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ElevenLabs Voice Chat</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0e0e0e; color: #e8e8e0; height: 100vh; display: flex; flex-direction: column; font-size: 14px; user-select: none; }
+
+#header { background: #161616; border-bottom: 1px solid #2a2a2a; padding: 8px 14px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+#header h1 { font-size: 14px; font-weight: 500; flex: 1; }
+.hbtn { background: #222; border: 1px solid #333; color: #ccc; padding: 4px 8px; border-radius: 6px; font-size: 12px; cursor: pointer; height: 26px; transition: all 0.15s; }
+.hbtn:hover { border-color: #555; color: #e8e8e0; }
+#pause-btn { background: #222; border: 1px solid #333; color: #ccc; padding: 4px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; height: 26px; transition: all 0.15s; }
+#pause-btn:hover { border-color: #555; color: #e8e8e0; }
+#pause-btn.paused { background: #2a1a1a; border-color: #aa4444; color: #ff8888; }
+#mute-btn { background: #222; border: 1px solid #333; color: #ccc; padding: 4px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; height: 26px; transition: all 0.15s; }
+#mute-btn:hover { border-color: #555; color: #e8e8e0; }
+#mute-btn.muted { background: #1a1a2a; border-color: #4444aa; color: #8888ff; }
+
+/* Settings */
+#settings-panel { background: #131313; border-bottom: 1px solid #222; padding: 10px 14px; flex-shrink: 0; display: none; flex-direction: column; gap: 8px; }
+#settings-panel.open { display: flex; }
+.setting-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #888; }
+.setting-row label { white-space: nowrap; min-width: 130px; }
+.setting-row input[type=text], .setting-row input[type=password] { flex:1; background:#222; border:1px solid #333; border-radius:5px; color:#e8e8e0; padding:3px 7px; font-size:12px; height:24px; }
+.setting-row input[type=text]:focus, .setting-row input[type=password]:focus { outline: none; border-color: #555; }
+
+/* Central orb */
+#orb-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; gap: 16px; }
+#orb {
+  width: 120px; height: 120px; border-radius: 50%;
+  background: #1a1a1a; border: 3px solid #2a2a2a;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; position: relative; transition: all 0.3s;
+}
+#orb.idle     { border-color: #2a2a2a; background: #1a1a1a; }
+#orb.connecting { border-color: #555566; background: #1a1a22; animation: pulse-idle 1.5s infinite; }
+#orb.listening  { border-color: #336633; background: #141e14; }
+#orb.talking    { border-color: #55aa55; background: #1a281a; animation: pulse-talk 0.6s infinite alternate; }
+#orb.speaking   { border-color: #336699; background: #141822; animation: pulse-speak 1s infinite alternate; }
+#orb.thinking   { border-color: #556633; background: #1a1e14; }
+
+@keyframes pulse-idle  { 0%,100%{box-shadow:none} 50%{box-shadow:0 0 20px rgba(100,100,150,0.2)} }
+@keyframes pulse-talk  { from{box-shadow:0 0 0 rgba(80,170,80,0)} to{box-shadow:0 0 30px rgba(80,170,80,0.4)} }
+@keyframes pulse-speak { from{box-shadow:0 0 10px rgba(60,100,180,0.2)} to{box-shadow:0 0 30px rgba(60,100,180,0.5)} }
+
+#orb-icon { transition: all 0.3s; }
+#orb.idle      #orb-icon { color: #444; }
+#orb.connecting #orb-icon { color: #8888aa; }
+#orb.listening  #orb-icon { color: #4a8a4a; }
+#orb.talking    #orb-icon { color: #77dd77; }
+#orb.speaking   #orb-icon { color: #6699dd; }
+#orb.thinking   #orb-icon { color: #aabb66; }
+
+/* Waveform bars — shown when agent speaking */
+#orb-bars { display: none; position: absolute; align-items: center; gap: 3px; }
+#orb.speaking #orb-bars { display: flex; }
+#orb.speaking #orb-icon { display: none; }
+.obar { width: 4px; border-radius: 3px; background: #6699dd; animation: obar 0.5s ease-in-out infinite alternate; }
+.obar:nth-child(1){animation-delay:0.0s;height:8px}
+.obar:nth-child(2){animation-delay:0.1s;height:16px}
+.obar:nth-child(3){animation-delay:0.2s;height:28px}
+.obar:nth-child(4){animation-delay:0.1s;height:16px}
+.obar:nth-child(5){animation-delay:0.0s;height:8px}
+@keyframes obar { from{transform:scaleY(0.3)} to{transform:scaleY(1)} }
+
+/* User talking bars */
+#orb-talk-bars { display: none; position: absolute; align-items: center; gap: 3px; }
+#orb.talking #orb-talk-bars { display: flex; }
+#orb.talking #orb-icon { display: none; }
+.tbar { width: 4px; border-radius: 3px; background: #77dd77; animation: tbar 0.3s ease-in-out infinite alternate; }
+.tbar:nth-child(1){animation-delay:0.00s}.tbar:nth-child(2){animation-delay:0.06s}
+.tbar:nth-child(3){animation-delay:0.12s}.tbar:nth-child(4){animation-delay:0.06s}
+.tbar:nth-child(5){animation-delay:0.00s}
+@keyframes tbar { from{height:4px} to{height:28px} }
+
+#orb-label { font-size: 13px; color: #666; letter-spacing: 0.05em; transition: color 0.3s; }
+#orb.idle       ~ #orb-label { color: #555; }
+#orb.connecting ~ #orb-label { color: #8888aa; }
+#orb.listening  ~ #orb-label { color: #4a8a4a; }
+#orb.talking    ~ #orb-label { color: #77dd77; }
+#orb.speaking   ~ #orb-label { color: #6699dd; }
+#orb.thinking   ~ #orb-label { color: #aabb66; }
+
+/* Status + transcript */
+#transcript { width: 100%; max-width: 500px; text-align: center; min-height: 40px; }
+#user-text  { font-size: 13px; color: #aaa; font-style: italic; margin-bottom: 6px; min-height: 18px; }
+#agent-text { font-size: 13px; color: #e0ddd8; min-height: 18px; }
+
+/* VaM bridge status */
+#bridge-row { font-size: 11px; color: #444; }
+
+/* Messages log */
+#messages { flex: 0 0 auto; max-height: 180px; overflow-y: auto; padding: 0 14px 10px; display: flex; flex-direction: column; gap: 6px; }
+#messages::-webkit-scrollbar { width: 3px; }
+#messages::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
+.msg { max-width: 85%; padding: 6px 10px; border-radius: 8px; line-height: 1.5; font-size: 12.5px; user-select: text; }
+.msg.user      { align-self: flex-end; background: #1e3a5f; color: #cce0ff; border-bottom-right-radius: 2px; }
+.msg.assistant { align-self: flex-start; background: #1a1a1a; color: #e0ddd8; border: 1px solid #2a2a2a; border-bottom-left-radius: 2px; }
+
+/* Setup overlay */
+.overlay { position:fixed; inset:0; background:rgba(0,0,0,0.92); display:none; align-items:center; justify-content:center; z-index:200; padding:20px; }
+.overlay.open { display:flex; }
+.overlay-box { background:#161616; border:1px solid #2a2a2a; border-radius:14px; padding:26px; max-width:440px; width:100%; }
+.overlay-box h2 { font-size:15px; font-weight:500; margin-bottom:8px; }
+.overlay-box p  { font-size:12.5px; color:#777; margin-bottom:6px; line-height:1.6; }
+.overlay-box a  { color:#5599dd; text-decoration:none; }
+.overlay-box a:hover { text-decoration:underline; }
+.input-group { margin-bottom:10px; }
+.input-group label { display:block; font-size:11.5px; color:#666; margin-bottom:4px; }
+.input-group input { width:100%; background:#222; border:1px solid #333; border-radius:7px; color:#e8e8e0; padding:9px 11px; font-family:'Consolas',monospace; font-size:12.5px; }
+.input-group input:focus { outline:none; border-color:#3a6aad; }
+.obtn { width:100%; border:none; padding:10px; border-radius:7px; font-size:13px; cursor:pointer; transition:background 0.15s; background:#1e3a6e; color:#7ab3ff; margin-top:4px; }
+.obtn:hover { background:#254d94; }
+.steps { background:#111; border-radius:8px; padding:12px 14px; margin-bottom:14px; }
+.steps ol { padding-left:16px; }
+.steps li { font-size:12px; color:#888; margin-bottom:6px; line-height:1.5; }
+.steps li strong { color:#ccc; }
+</style>
+</head>
+<body>
+
+<div class="overlay open" id="setup-overlay">
+  <div class="overlay-box">
+    <h2>ElevenLabs Conversational AI</h2>
+    <div class="steps">
+      <ol>
+        <li>Go to <a href="https://elevenlabs.io/app/conversational-ai" target="_blank">elevenlabs.io/app/conversational-ai</a></li>
+        <li>Click <strong>Create agent</strong> → choose a template or blank</li>
+        <li>Set your agent's name, voice, and system prompt</li>
+        <li>Copy the <strong>Agent ID</strong> from the agent's page</li>
+        <li>Paste it below along with your ElevenLabs API key</li>
+      </ol>
+    </div>
+    <div class="input-group">
+      <label>Agent ID</label>
+      <input type="text" id="agent-id-input" placeholder="e.g. abc123xyz...">
+    </div>
+    <div class="input-group">
+      <label>ElevenLabs API key</label>
+      <input type="password" id="el-key-setup" placeholder="Your ElevenLabs API key">
+    </div>
+    <button class="obtn" id="setup-save-btn">Save & Start →</button>
+  </div>
+</div>
+
+<div id="header">
+  <h1>ElevenLabs Voice</h1>
+  <button id="pause-btn" style="display:none">⏸ Pause</button>
+  <button id="mute-btn" style="display:none" title="Mute Chrome audio (use VaM audio in VR)">🔊</button>
+  <button class="hbtn" id="settings-btn">⚙</button>
+  <button class="hbtn" id="clear-btn">Clear</button>
+</div>
+
+<div id="settings-panel">
+  <div class="setting-row">
+    <label>Agent ID</label>
+    <input type="text" id="agent-id-setting" placeholder="ElevenLabs Agent ID">
+  </div>
+  <div class="setting-row">
+    <label>ElevenLabs API key</label>
+    <input type="password" id="el-key-setting" placeholder="ElevenLabs API key">
+  </div>
+  <div class="setting-row">
+    <label>VaM Bridge port</label>
+    <input type="text" id="bridge-port" value="7749" placeholder="7749">
+  </div>
+  <div class="setting-row">
+    <label>VaM Bridge lipsync</label>
+    <input type="checkbox" id="bridge-cb">
+    <span id="bridge-status" style="font-size:11px;color:#555;">off</span>
+  </div>
+</div>
+
+<div id="orb-wrap">
+  <div id="orb" title="Click to start / stop">
+    <svg id="orb-icon" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="9" y="2" width="6" height="12" rx="3"/>
+      <path d="M5 10a7 7 0 0 0 14 0"/>
+      <line x1="12" y1="19" x2="12" y2="22"/>
+      <line x1="8" y1="22" x2="16" y2="22"/>
+    </svg>
+    <div id="orb-bars">
+      <div class="obar"></div><div class="obar"></div><div class="obar"></div>
+      <div class="obar"></div><div class="obar"></div>
+    </div>
+    <div id="orb-talk-bars">
+      <div class="tbar"></div><div class="tbar"></div><div class="tbar"></div>
+      <div class="tbar"></div><div class="tbar"></div>
+    </div>
+  </div>
+  <div id="orb-label">Click to start</div>
+  <div id="transcript">
+    <div id="user-text"></div>
+    <div id="agent-text"></div>
+  </div>
+  <div id="bridge-row">VaM Bridge: <span id="bridge-info">off</span></div>
+</div>
+
+<div id="messages"></div>
+
+<script>
+var AGENT_ID_KEY  = 'vamx_el_agent_id';
+var EL_KEY_STORE  = 'vamx_el_key';
+var BRIDGE_KEY    = 'vamx_bridge_on';
+
+var agentId = localStorage.getItem(AGENT_ID_KEY) || '';
+var elKey   = localStorage.getItem(EL_KEY_STORE)  || '';
+var bridgeOn = localStorage.getItem(BRIDGE_KEY) === 'true';
+var bridgePort = 7749;
+
+var ws = null;
+var audioCtx = null;
+var micStream = null;
+var scriptProcessor = null;
+var connected = false;
+var paused = false;
+var chromeMuted = false;
+var audioQueue = [];
+var isPlayingAudio = false;
+var currentSource = null;
+
+var orb      = document.getElementById('orb');
+var orbLabel = document.getElementById('orb-label');
+var userText  = document.getElementById('user-text');
+var agentText = document.getElementById('agent-text');
+var messagesEl = document.getElementById('messages');
+
+// ── Init ──────────────────────────────────────────────────────
+function init() {
+  if (agentId && elKey) {
+    document.getElementById('setup-overlay').classList.remove('open');
+  }
+  document.getElementById('agent-id-setting').value = agentId;
+  document.getElementById('el-key-setting').value   = elKey;
+  document.getElementById('bridge-cb').checked = bridgeOn;
+  updateBridgeInfo();
+
+  var savedPort = localStorage.getItem('vamx_bridge_port');
+  if (savedPort) { bridgePort = parseInt(savedPort); document.getElementById('bridge-port').value = savedPort; }
+}
+
+// ── Setup overlay ─────────────────────────────────────────────
+document.getElementById('setup-save-btn').onclick = function() {
+  var aid = document.getElementById('agent-id-input').value.trim();
+  var key = document.getElementById('el-key-setup').value.trim();
+  if (!aid || !key) return;
+  agentId = aid; elKey = key;
+  localStorage.setItem(AGENT_ID_KEY, aid);
+  localStorage.setItem(EL_KEY_STORE, key);
+  document.getElementById('agent-id-setting').value = aid;
+  document.getElementById('el-key-setting').value   = key;
+  document.getElementById('setup-overlay').classList.remove('open');
+};
+
+// ── Settings ──────────────────────────────────────────────────
+document.getElementById('settings-btn').onclick = function() { document.getElementById('settings-panel').classList.toggle('open'); };
+document.getElementById('clear-btn').onclick    = function() { messagesEl.innerHTML = ''; userText.textContent = ''; agentText.textContent = ''; };
+
+document.getElementById('pause-btn').onclick = function() {
+  if (!connected) return;
+  paused = !paused;
+  var btn = document.getElementById('pause-btn');
+  if (paused) {
+    btn.textContent = '▶ Resume';
+    btn.classList.add('paused');
+    // Mute mic — disconnect script processor
+    if (scriptProcessor) scriptProcessor.disconnect();
+    // Stop any playing audio
+    stopAudioPlayback();
+    setOrb('idle', 'Paused');
+  } else {
+    btn.textContent = '⏸ Pause';
+    btn.classList.remove('paused');
+    // Reconnect mic
+    if (scriptProcessor && audioCtx) scriptProcessor.connect(audioCtx.destination);
+    setOrb('listening', 'Listening…');
+  }
+};
+
+
+document.getElementById('mute-btn').onclick = function() {
+  chromeMuted = !chromeMuted;
+  var btn = document.getElementById('mute-btn');
+  btn.textContent = chromeMuted ? '🔇' : '🔊';
+  btn.classList.toggle('muted', chromeMuted);
+};
+document.getElementById('agent-id-setting').onchange = function() { agentId = this.value.trim(); localStorage.setItem(AGENT_ID_KEY, agentId); };
+document.getElementById('el-key-setting').onchange   = function() { elKey   = this.value.trim(); localStorage.setItem(EL_KEY_STORE, elKey); };
+document.getElementById('bridge-port').onchange      = function() { bridgePort = parseInt(this.value)||7749; localStorage.setItem('vamx_bridge_port', this.value); };
+document.getElementById('bridge-cb').onchange        = function() { bridgeOn = this.checked; localStorage.setItem(BRIDGE_KEY, bridgeOn); updateBridgeInfo(); };
+
+function updateBridgeInfo() {
+  var el = document.getElementById('bridge-info');
+  document.getElementById('bridge-status').textContent = bridgeOn ? 'on' : 'off';
+  document.getElementById('bridge-status').style.color = bridgeOn ? '#6dc96d' : '#555';
+  el.textContent = bridgeOn ? 'port ' + bridgePort : 'off';
+}
+
+// ── Orb click ─────────────────────────────────────────────────
+orb.onclick = function() {
+  if (!agentId || !elKey) { document.getElementById('setup-overlay').classList.add('open'); return; }
+  if (connected) stopConversation();
+  else startConversation();
+};
+
+// ── State ─────────────────────────────────────────────────────
+function setOrb(state, label) {
+  orb.className = state;
+  orbLabel.textContent = label;
+}
+
+// ── Start conversation ────────────────────────────────────────
+function startConversation() {
+  setOrb('connecting', 'Connecting…');
+
+  // Get signed URL to avoid exposing API key in WS URL
+  fetch('https://api.elevenlabs.io/v1/convai/conversation/get-signed-url?agent_id=' + agentId, {
+    headers: { 'xi-api-key': elKey }
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (!data.signed_url) throw new Error('No signed URL');
+    connectWS(data.signed_url);
+  })
+  .catch(function(err) {
+    appendMsg('error', 'Connection failed: ' + err.message);
+    setOrb('idle', 'Click to start');
+  });
+}
+
+function connectWS(url) {
+  ws = new WebSocket(url);
+  ws.binaryType = 'arraybuffer';
+
+  ws.onopen = function() {
+    connected = true;
+    paused = false;
+    var pb = document.getElementById('pause-btn');
+    pb.style.display = ''; pb.textContent = '⏸ Pause'; pb.classList.remove('paused');
+    document.getElementById('mute-btn').style.display = '';
+    ws.send(JSON.stringify({ type: 'conversation_initiation_client_data' }));
+    startMic();
+    setOrb('listening', 'Listening…');
+  };
+
+  ws.onmessage = function(event) {
+    if (typeof event.data === 'string') {
+      handleWSMessage(JSON.parse(event.data));
+    }
+  };
+
+  ws.onclose = function() {
+    connected = false;
+    stopMic();
+    document.getElementById('pause-btn').style.display = 'none';
+    document.getElementById('mute-btn').style.display = 'none';
+    chromeMuted = false;
+    setOrb('idle', 'Click to start');
+    appendMsg('system', '— Conversation ended —');
+  };
+
+  ws.onerror = function() {
+    appendMsg('error', 'WebSocket error');
+    setOrb('idle', 'Click to start');
+  };
+}
+
+function stopConversation() {
+  if (ws) { ws.close(); ws = null; }
+  stopMic();
+  connected = false;
+  setOrb('idle', 'Click to start');
+}
+
+// ── Handle WS messages ────────────────────────────────────────
+function handleWSMessage(data) {
+  if (data.type === 'ping') {
+    setTimeout(function() {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'pong', event_id: data.ping_event.event_id }));
+      }
+    }, data.ping_event.ping_ms || 0);
+    return;
+  }
+
+  if (data.type === 'conversation_initiation_metadata') {
+    // Conversation started
+    return;
+  }
+
+  if (data.type === 'user_transcript') {
+    var txt = data.user_transcription_event.user_transcript;
+    userText.textContent = '🎤 ' + txt;
+    agentText.textContent = '';
+    setOrb('thinking', 'Thinking…');
+    appendMsg('user', txt);
+    return;
+  }
+
+  if (data.type === 'agent_response') {
+    var resp = data.agent_response_event.agent_response;
+    agentText.textContent = resp;
+    appendMsg('assistant', resp);
+    return;
+  }
+
+  if (data.type === 'audio') {
+    setOrb('speaking', 'Speaking…');
+    var audioB64 = data.audio_event.audio_base_64;
+    var audioBytes = base64ToArrayBuffer(audioB64);
+    queueAudio(audioBytes);
+    return;
+  }
+
+  if (data.type === 'interruption') {
+    stopAudioPlayback();
+    setOrb('listening', 'Listening…');
+    return;
+  }
+
+  if (data.type === 'agent_response_correction') return;
+
+  // After agent finishes speaking
+  if (data.type === 'agent_chat_response_part') {
+    if (data.text_response_part && data.text_response_part.type === 'stop') {
+      // Will go back to listening after audio queue drains
+    }
+    return;
+  }
+}
+
+// ── Microphone → WebSocket ─────────────────────────────────────
+function startMic() {
+  navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, sampleRate: 16000 }, video: false })
+  .then(function(stream) {
+    micStream = stream;
+    audioCtx  = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+    var src   = audioCtx.createMediaStreamSource(stream);
+
+    // Use ScriptProcessor to get raw PCM and send as base64
+    scriptProcessor = audioCtx.createScriptProcessor(4096, 1, 1);
+    src.connect(scriptProcessor);
+    scriptProcessor.connect(audioCtx.destination);
+
+    scriptProcessor.onaudioprocess = function(e) {
+      if (!ws || ws.readyState !== WebSocket.OPEN || paused) return;
+      var float32 = e.inputBuffer.getChannelData(0);
+      var int16   = float32ToInt16(float32);
+      var b64     = arrayBufferToBase64(int16.buffer);
+      ws.send(JSON.stringify({ user_audio_chunk: b64 }));
+    };
+  })
+  .catch(function(err) { appendMsg('error', 'Mic denied: ' + err.message); });
+}
+
+function stopMic() {
+  if (scriptProcessor) { scriptProcessor.disconnect(); scriptProcessor = null; }
+  if (micStream) { micStream.getTracks().forEach(function(t){ t.stop(); }); micStream = null; }
+  if (audioCtx)  { audioCtx.close(); audioCtx = null; }
+}
+
+// ── Audio playback ─────────────────────────────────────────────
+// ElevenLabs sends PCM audio as base64 — decode and play via Web Audio
+
+function drainAudioQueue() {
+  if (audioQueue.length === 0) {
+    isPlayingAudio = false;
+    if (connected) setOrb('listening', 'Listening…');
+    return;
+  }
+  isPlayingAudio = true;
+  var buf = audioQueue.shift();
+  playPCM(buf, function() { drainAudioQueue(); });
+}
+
+function playPCM(arrayBuffer, onEnd) {
+  // ElevenLabs sends 16-bit PCM at 16000Hz (or 24000Hz depending on agent config)
+  var sampleRate = 16000;
+  var int16 = new Int16Array(arrayBuffer);
+  var float32 = new Float32Array(int16.length);
+  for (var i = 0; i < int16.length; i++) float32[i] = int16[i] / 32768.0;
+
+  var playCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: sampleRate });
+  var clip = playCtx.createBuffer(1, float32.length, sampleRate);
+  clip.getChannelData(0).set(float32);
+
+  var source = playCtx.createBufferSource();
+  source.buffer = clip;
+  if (!chromeMuted) source.connect(playCtx.destination);
+  currentSource = { source: source, ctx: playCtx };
+  source.onended = function() { playCtx.close(); currentSource = null; onEnd(); };
+  source.start();
+}
+
+function stopAudioPlayback() {
+  if (currentSource) {
+    try { currentSource.source.stop(); } catch(e) {}
+    try { currentSource.ctx.close(); } catch(e) {}
+    currentSource = null;
+  }
+  audioQueue = [];
+  isPlayingAudio = false;
+}
+
+// ── VaM Bridge ─────────────────────────────────────────────────
+// Each PCM chunk is forwarded to VaM the moment it arrives - not buffered
+// for the whole utterance - so VaM playback starts almost together with
+// the local browser playback instead of after it finishes.
+
+function queueAudio(pcmBuffer) {
+  if (bridgeOn) sendChunkToBridge(pcmBuffer);
+
+  audioQueue.push(pcmBuffer);
+  if (!isPlayingAudio) drainAudioQueue();
+}
+
+function sendChunkToBridge(pcmBuffer) {
+  var wavBuffer = pcmToWav(pcmBuffer, 16000, 1);
+  fetch('http://localhost:' + bridgePort + '/audio', {
+    method: 'POST', headers: { 'Content-Type': 'audio/wav' }, body: wavBuffer
+  }).catch(function(){});
+}
+
+function pcmToWav(pcmBuffer, sampleRate, channels) {
+  var int16 = new Int16Array(pcmBuffer);
+  var wav = new ArrayBuffer(44 + int16.byteLength);
+  var v = new DataView(wav);
+  function ws(o, s) { for (var i=0;i<s.length;i++) v.setUint8(o+i, s.charCodeAt(i)); }
+  ws(0,'RIFF'); v.setUint32(4, 36 + int16.byteLength, true);
+  ws(8,'WAVE'); ws(12,'fmt ');
+  v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,channels,true);
+  v.setUint32(24,sampleRate,true); v.setUint32(28,sampleRate*channels*2,true);
+  v.setUint16(32,channels*2,true); v.setUint16(34,16,true);
+  ws(36,'data'); v.setUint32(40,int16.byteLength,true);
+  new Int16Array(wav,44).set(int16);
+  return wav;
+}
+
+// ── Helpers ────────────────────────────────────────────────────
+function float32ToInt16(float32) {
+  var int16 = new Int16Array(float32.length);
+  for (var i=0; i<float32.length; i++) {
+    var s = Math.max(-1, Math.min(1, float32[i]));
+    int16[i] = s < 0 ? s * 32768 : s * 32767;
+  }
+  return int16;
+}
+
+function arrayBufferToBase64(buffer) {
+  var bytes = new Uint8Array(buffer);
+  var binary = '';
+  for (var i=0; i<bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
+}
+
+function base64ToArrayBuffer(b64) {
+  var binary = atob(b64);
+  var bytes = new Uint8Array(binary.length);
+  for (var i=0; i<binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes.buffer;
+}
+
+function appendMsg(role, text) {
+  if (role === 'system') {
+    var d = document.createElement('div');
+    d.style.cssText = 'text-align:center;font-size:11px;color:#444;padding:4px 0;';
+    d.textContent = text; messagesEl.appendChild(d);
+  } else if (role === 'error') {
+    var d = document.createElement('div');
+    d.style.cssText = 'font-size:12px;color:#ff8888;padding:4px 14px;';
+    d.textContent = '⚠ ' + text; messagesEl.appendChild(d);
+  } else {
+    var d = document.createElement('div');
+    d.className = 'msg ' + role;
+    d.textContent = text; messagesEl.appendChild(d);
+  }
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+init();
+</script>
+</body>
+</html>
